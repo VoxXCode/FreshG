@@ -1,0 +1,25 @@
+{
+  "status": "success",
+  "server_time": "2026-10-06T08:00:00Z",
+  "data": {
+    "id": 90214,
+    "full_name": "Sari Rahmawati",
+    "email": "sari.rahmawati@email.com",
+    "phone_number": "+6281234567890",
+    "password_hash": "$2b$10$Qk3h8v1sZ0eX9yT7uR6wOe",
+    "avatar_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuADK4UOhZTZhdZSX974xercr3HyIPVmjdioeRC0jmokUu-jAVWyw6d_5n3MF4xa59BQi-w7DsWSZPIJNO41n0NhbFz9PTwKPIHD0ZAkr6hVT9woFxAukPtFJXnt6pECRrClQ0BUUfqbo9K6JJCYkjgC4SlgRpP4s6PpmGvmVymoNEK3WQTIRlucAXktoQVXCut1eyrDk-z-82tX0cqADvgkIJZFNBZQn2hUxn-juneH7_Y0T4hxy52o",
+    "member_code": "FG-90214",
+    "membership_tier": "eco_saver",
+    "impact_stats": {
+      "period": "last_30_days",
+      "saved_amount_idr": 420000,
+      "rescued_items": 38,
+      "success_rate": 0.92,
+      "co2_prevented_kg": 14.5,
+      "percentile_rank": 5
+    },
+    "last_login_at": "2026-10-06T06:45:00Z",
+    "created_at": "2025-01-14T09:00:00Z",
+    "updated_at": "2026-10-05T21:10:00Z"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "status": "success",
+  "server_time": "2026-10-06T08:00:00Z",
+  "data": [
+    {
+      "id": 201,
+      "slug": "simpan-daging-ikan-freezer",
+      "category_tag": "Freezer Safety",
+      "read_time_minutes": 4,
+      "title": "Cara Benar Menyimpan Daging & Ikan di Freezer agar Bebas Bakteri",
+      "content": "Jangan pernah membekukan kembali daging yang telah dicairkan (thawing). Bagi daging per porsi masak dalam wadah kedap udara atau vakum untuk menghindari freezer burn dan kontaminasi silang.",
+      "tip_label": "Aturan Emas",
+      "tip_text": "Tempel label tanggal pembekuan pada wadah dan konsumsi maksimal 3-6 bulan.",
+      "tip_icon": "tips-and-updates",
+      "icon_name": "kitchen",
+      "color_theme": "blue",
+      "reviewer_name": "Ahli Gizi FreshG",
+      "view_count": 12840,
+      "published_at": "2026-05-10T02:00:00Z"
+    },
+    {
+      "id": 202,
+      "slug": "simpan-bawang-kentang",
+      "category_tag": "Pantry Hacks",
+      "read_time_minutes": 3,
+      "title": "Menyimpan Bawang & Kentang: Jangan Campur! Ini Alasannya",
+      "content": "Bawang menghasilkan gas etilen konsentrasi tinggi yang mempercepat proses bertunas dan pembusukan pada kentang. Simpan keduanya di tempat gelap, kering, dengan sirkulasi udara baik namun berjauhan.",
+      "tip_label": "Trik Awet",
+      "tip_text": "Gunakan kantong jaring atau keranjang bambu berlubang, jangan simpan di kantong plastik tertutup.",
+      "tip_icon": "lightbulb",
+      "icon_name": "warning",
+      "color_theme": "amber",
+      "reviewer_name": "Ahli Gizi FreshG",
+      "view_count": 9311,
+      "published_at": "2026-06-02T02:00:00Z"
+    }
+  ]
+}
