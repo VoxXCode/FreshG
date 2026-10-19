@@ -1,0 +1,150 @@
+{
+	"info": {
+		"_postman_id": "c8df630a-freshg-login-api-collection",
+		"name": "FreshG - Login API",
+		"description": "Koleksi Postman untuk pengujian REST API Login FreshG berdasarkan Modul 2 Praktikum Pemrograman Web",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "POST Login - Berhasil (200 OK)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"budi.santoso@gmail.com\",\n  \"password\": \"Budi2024!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"login"
+							]
+						},
+						"description": "Pengujian autentikasi sukses dengan HTTP Status Code 200 OK (Tabel 8.5 Modul 2)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Login - Validasi Input Kosong (400 Bad Request)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"\",\n  \"password\": \"\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"login"
+							]
+						},
+						"description": "Pengujian validasi data input tidak lengkap dengan HTTP Status Code 400 Bad Request (Tabel 8.5 Modul 2)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Login - Kredensial Salah (401 Unauthorized)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"budi.santoso@gmail.com\",\n  \"password\": \"PasswordSalah123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"login"
+							]
+						},
+						"description": "Pengujian kredensial tidak cocok dengan HTTP Status Code 401 Unauthorized (Tabel 8.5 Modul 2)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Logout - Berhasil (200 OK)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:3000/api/logout",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"logout"
+							]
+						},
+						"description": "Pengujian fungsi logout untuk mengakhiri sesi user (HTTP 200 OK)."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

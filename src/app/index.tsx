@@ -2,73 +2,68 @@
  * FreshG – Home / Beranda Screen
  * Faithful React Native translation of the HTML reference design.
  */
-import { useState, useMemo, useRef, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  Animated,
-  Platform,
-  StatusBar,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
-import {
-  MaterialIcons,
-  MaterialCommunityIcons,
   Feather,
   Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
 } from '@expo/vector-icons';
-
+import { useCallback, useMemo, useState } from 'react';
 import {
-  type Ingredient,
-  type Category,
-  type StorageLocation,
-  type FreshnessStatus,
-  type IngredientStatus,
-  CATEGORIES,
-  STORAGE_LOCATIONS,
-  FRESHNESS_CONFIG,
-  STORAGE_TIPS,
-  DEFAULT_EXPIRY_DAYS,
-  getFreshnessStatus,
-  getDaysUntilExpiry,
-  getFreshnessPercent,
-} from '@/types/ingredient';
+  ActivityIndicator,
+  Alert,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { BottomTabInset } from '@/constants/theme';
 import { useIngredients } from '@/hooks/use-ingredients';
+import {
+  type Category,
+  type FreshnessStatus,
+  type Ingredient,
+  type IngredientStatus,
+  type StorageLocation,
+  FRESHNESS_CONFIG,
+  getDaysUntilExpiry,
+  getFreshnessPercent,
+  getFreshnessStatus,
+  STORAGE_TIPS
+} from '@/types/ingredient';
 
 // ─── Design Tokens (translated from Tailwind config) ─────────────────────────
 
 const C = {
-  primary:            '#006c49',
-  primaryContainer:   '#10b981',
-  onPrimary:          '#ffffff',
+  primary: '#006c49',
+  primaryContainer: '#10b981',
+  onPrimary: '#ffffff',
   onPrimaryContainer: '#00422b',
-  secondary:          '#006c4a',
+  secondary: '#006c4a',
   secondaryContainer: '#82f5c1',
   onSecondaryContainer: '#00714e',
-  surface:            '#f8f9ff',
-  surfaceContainer:   '#e5eeff',
-  surfaceContainerLow:'#eff4ff',
-  surfaceLowest:      '#ffffff',
-  onSurface:          '#0b1c30',
-  onSurfaceVariant:   '#3c4a42',
-  outlineVariant:     '#bbcabf',
-  outline:            '#6c7a71',
-  error:              '#ba1a1a',
-  errorContainer:     '#ffdad6',
-  onErrorContainer:   '#93000a',
-  tertiary:           '#855300',
-  tertiaryContainer:  '#e29100',
-  tertiaryFixed:      '#ffddb8',
-  tertiaryFixedDim:   '#ffb95f',
-  onTertiaryContainer:'#523200',
+  surface: '#f8f9ff',
+  surfaceContainer: '#e5eeff',
+  surfaceContainerLow: '#eff4ff',
+  surfaceLowest: '#ffffff',
+  onSurface: '#0b1c30',
+  onSurfaceVariant: '#3c4a42',
+  outlineVariant: '#bbcabf',
+  outline: '#6c7a71',
+  error: '#ba1a1a',
+  errorContainer: '#ffdad6',
+  onErrorContainer: '#93000a',
+  tertiary: '#855300',
+  tertiaryContainer: '#e29100',
+  tertiaryFixed: '#ffddb8',
+  tertiaryFixedDim: '#ffb95f',
+  onTertiaryContainer: '#523200',
 };
 
 // ─── Category icon map ────────────────────────────────────────────────────────
@@ -77,30 +72,30 @@ type MCName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 type MIName = React.ComponentProps<typeof MaterialIcons>['name'];
 
 const CATEGORY_MC: Record<Category, MCName> = {
-  'Sayuran':         'sprout',
-  'Buah-buahan':     'fruit-grapes',
-  'Bumbu Dapur':     'chili-mild',
+  'Sayuran': 'sprout',
+  'Buah-buahan': 'fruit-grapes',
+  'Bumbu Dapur': 'chili-mild',
   'Daging & Olahan': 'food-steak',
-  'Susu & Telur':    'egg',
-  'Herbal':          'leaf',
-  'Kering':          'grain',
+  'Susu & Telur': 'egg',
+  'Herbal': 'leaf',
+  'Kering': 'grain',
 };
 
 const CATEGORY_BG: Record<Category, string> = {
-  'Sayuran':         '#dcfce7',
-  'Buah-buahan':     '#fce7f3',
-  'Bumbu Dapur':     '#fef9c3',
+  'Sayuran': '#dcfce7',
+  'Buah-buahan': '#fce7f3',
+  'Bumbu Dapur': '#fef9c3',
   'Daging & Olahan': '#fee2e2',
-  'Susu & Telur':    '#ede9fe',
-  'Herbal':          '#d1fae5',
-  'Kering':          '#fef3c7',
+  'Susu & Telur': '#ede9fe',
+  'Herbal': '#d1fae5',
+  'Kering': '#fef3c7',
 };
 
 const STORAGE_ICON: Record<StorageLocation, { icon: string; bg: string; color: string }> = {
-  'Kulkas':      { icon: 'snow-outline',               bg: '#e0f2fe', color: '#0369a1' },
-  'Freezer':     { icon: 'ice-cream-outline',           bg: '#eef2ff', color: '#4338ca' },
-  'Suhu Ruang':  { icon: 'sunny-outline',               bg: '#fef3c7', color: '#b45309' },
-  'Lemari':      { icon: 'file-tray-stacked-outline',   bg: '#f3f4f6', color: '#6b7280' },
+  'Kulkas': { icon: 'snow-outline', bg: '#e0f2fe', color: '#0369a1' },
+  'Freezer': { icon: 'ice-cream-outline', bg: '#eef2ff', color: '#4338ca' },
+  'Suhu Ruang': { icon: 'sunny-outline', bg: '#fef3c7', color: '#b45309' },
+  'Lemari': { icon: 'file-tray-stacked-outline', bg: '#f3f4f6', color: '#6b7280' },
 };
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -112,10 +107,10 @@ const STORAGE_ICON: Record<StorageLocation, { icon: string; bg: string; color: s
 function FreshnessBar({ percent, status }: { percent: number; status: FreshnessStatus }) {
   const cfg = FRESHNESS_CONFIG[status];
   const freshnessLabel =
-    status === 'fresh'    ? 'Kondisi Sangat Segar' :
-    status === 'warning'  ? 'Perlu Perhatian'       :
-    status === 'expiring' ? 'Masa Simpan Kritis'    :
-    'Kedaluwarsa';
+    status === 'fresh' ? 'Kondisi Sangat Segar' :
+      status === 'warning' ? 'Perlu Perhatian' :
+        status === 'expiring' ? 'Masa Simpan Kritis' :
+          'Kedaluwarsa';
 
   return (
     <View style={pb.wrap}>
@@ -131,12 +126,12 @@ function FreshnessBar({ percent, status }: { percent: number; status: FreshnessS
 }
 
 const pb = StyleSheet.create({
-  wrap:     { marginTop: 10 },
+  wrap: { marginTop: 10 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  label:    { fontSize: 11, fontWeight: '700' },
-  pct:      { fontSize: 11, fontWeight: '700' },
-  track:    { height: 6, backgroundColor: '#e5eeff', borderRadius: 99, overflow: 'hidden' },
-  fill:     { height: '100%', borderRadius: 99 },
+  label: { fontSize: 11, fontWeight: '700' },
+  pct: { fontSize: 11, fontWeight: '700' },
+  track: { height: 6, backgroundColor: '#e5eeff', borderRadius: 99, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 99 },
 });
 
 // ─── Storage Location Pill ────────────────────────────────────────────────────
@@ -152,8 +147,8 @@ function StoragePill({ location }: { location: StorageLocation }) {
 }
 
 const pill = StyleSheet.create({
-  wrap:  { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
-  text:  { fontSize: 11, fontWeight: '700' },
+  wrap: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  text: { fontSize: 11, fontWeight: '700' },
 });
 
 // ─── Freshness Badge ──────────────────────────────────────────────────────────
@@ -161,9 +156,9 @@ const pill = StyleSheet.create({
 function FreshnessBadge({ status, daysLeft }: { status: FreshnessStatus; daysLeft: number }) {
   const cfg = FRESHNESS_CONFIG[status];
   const label =
-    daysLeft < 0   ? 'Kedaluwarsa'             :
-    daysLeft === 0 ? `${cfg.label} - Hari ini`  :
-    `${cfg.label} - ${daysLeft} Hari`;
+    daysLeft < 0 ? 'Kedaluwarsa' :
+      daysLeft === 0 ? `${cfg.label} - Hari ini` :
+        `${cfg.label} - ${daysLeft} Hari`;
 
   return (
     <View style={[fb.wrap, { backgroundColor: cfg.bgColor, borderColor: cfg.color + '33' }]}>
@@ -179,7 +174,7 @@ const fb = StyleSheet.create({
     borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5,
     borderWidth: 1, alignSelf: 'flex-start',
   },
-  dot:  { width: 6, height: 6, borderRadius: 3 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   text: { fontSize: 11, fontWeight: '700' },
 });
 
@@ -192,11 +187,11 @@ function IngredientCard({
   onUse: (id: string) => void;
   onDiscard: (id: string) => void;
 }) {
-  const status   = getFreshnessStatus(item.expiryDate);
+  const status = getFreshnessStatus(item.expiryDate);
   const daysLeft = getDaysUntilExpiry(item.expiryDate);
-  const percent  = getFreshnessPercent(daysLeft, item.totalDays);
-  const catBg    = CATEGORY_BG[item.category];
-  const cfg      = FRESHNESS_CONFIG[status];
+  const percent = getFreshnessPercent(daysLeft, item.totalDays);
+  const catBg = CATEGORY_BG[item.category];
+  const cfg = FRESHNESS_CONFIG[status];
 
   const isExpiring = status === 'expiring' || status === 'expired';
 
@@ -330,7 +325,7 @@ const ch = StyleSheet.create({
     marginRight: 8,
   },
   chipActive: { backgroundColor: C.primary, borderColor: C.primary },
-  text:       { fontSize: 12, fontWeight: '600', color: C.onSurface },
+  text: { fontSize: 12, fontWeight: '600', color: C.onSurface },
   textActive: { color: C.onPrimary },
 });
 
@@ -370,12 +365,12 @@ const fp = StyleSheet.create({
     backgroundColor: C.surfaceLowest,
     marginRight: 8,
   },
-  pillActive:  { backgroundColor: C.primary, borderColor: C.primary },
-  pillUrgent:  { backgroundColor: C.errorContainer + 'CC', borderColor: C.error + '4D' },
-  urgentDot:   { width: 6, height: 6, borderRadius: 3, backgroundColor: C.error },
-  text:        { fontSize: 12, fontWeight: '600', color: C.onSurfaceVariant },
-  textActive:  { color: C.onPrimary },
-  textUrgent:  { color: C.onErrorContainer, fontWeight: '700' },
+  pillActive: { backgroundColor: C.primary, borderColor: C.primary },
+  pillUrgent: { backgroundColor: C.errorContainer + 'CC', borderColor: C.error + '4D' },
+  urgentDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.error },
+  text: { fontSize: 12, fontWeight: '600', color: C.onSurfaceVariant },
+  textActive: { color: C.onPrimary },
+  textUrgent: { color: C.onErrorContainer, fontWeight: '700' },
 });
 
 // ─── Storage Tip Card ─────────────────────────────────────────────────────────
@@ -416,18 +411,18 @@ const st = StyleSheet.create({
     borderRadius: 16, padding: 14,
     borderWidth: 1, borderColor: C.tertiaryFixedDim + '99',
   },
-  iconCol:  { paddingTop: 2 },
+  iconCol: { paddingTop: 2 },
   iconWrap: {
     width: 36, height: 36, borderRadius: 12,
     backgroundColor: C.tertiaryContainer + '33',
     alignItems: 'center', justifyContent: 'center',
   },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  label:  { fontSize: 10, fontWeight: '800', color: C.tertiary, textTransform: 'uppercase', letterSpacing: 0.8 },
-  text:   { fontSize: 13, color: C.onSurface, lineHeight: 20 },
+  label: { fontSize: 10, fontWeight: '800', color: C.tertiary, textTransform: 'uppercase', letterSpacing: 0.8 },
+  text: { fontSize: 13, color: C.onSurface, lineHeight: 20 },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
-  nextBtn:  { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  nextTxt:  { fontSize: 12, fontWeight: '700', color: C.tertiary },
+  nextBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  nextTxt: { fontSize: 12, fontWeight: '700', color: C.tertiary },
   category: { fontSize: 11, color: C.onSurfaceVariant, fontWeight: '500' },
 });
 
@@ -457,7 +452,7 @@ export default function HomeScreen() {
         return s === 'expiring' || s === 'expired';
       })
       .sort((a, b) => a.expiryDate.getTime() - b.expiryDate.getTime()),
-  [active]);
+    [active]);
   const urgentCount = urgentItems.length;
   const urgentNames = urgentItems.slice(0, 2).map(i => i.name).join(' & ');
 
@@ -504,12 +499,12 @@ export default function HomeScreen() {
 
   const filterOptions: { label: string; value: FilterType }[] = [
     { label: `Semua (${active.length})`, value: 'Semua' },
-    { label: `Kritis/Segera (<2 hari)`,  value: 'Kritis' },
-    { label: 'Kulkas ❄️',               value: 'Kulkas' },
-    { label: 'Freezer 🧊',              value: 'Freezer' },
-    { label: 'Suhu Ruang',              value: 'Suhu Ruang' },
-    { label: 'Sayuran',                 value: 'Sayuran' },
-    { label: 'Buah',                    value: 'Buah-buahan' },
+    { label: `Kritis/Segera (<2 hari)`, value: 'Kritis' },
+    { label: 'Kulkas ❄️', value: 'Kulkas' },
+    { label: 'Freezer 🧊', value: 'Freezer' },
+    { label: 'Suhu Ruang', value: 'Suhu Ruang' },
+    { label: 'Sayuran', value: 'Sayuran' },
+    { label: 'Buah', value: 'Buah-buahan' },
   ];
 
   return (
@@ -521,9 +516,9 @@ export default function HomeScreen() {
         <View style={s.header}>
           {/* Avatar + Greeting */}
           <View style={s.headerLeft}>
-            
+
             <View>
-              
+
               <View style={s.brandRow}>
                 <Text style={s.brandName}>FreshG</Text>
                 <MaterialCommunityIcons name="leaf" size={18} color={C.primaryContainer} />
@@ -579,7 +574,7 @@ export default function HomeScreen() {
         )}
 
         {/* ── SECTION 2: Quick Input & Category Presets ── */}
-        
+
 
         {/* ── SECTION 3: Search & Filter ── */}
         <View style={s.section}>
@@ -604,7 +599,7 @@ export default function HomeScreen() {
         <View style={s.section}>
           <View style={s.listHeader}>
             <Text style={s.sectionTitle}>Stok Tersedia</Text>
-            
+
           </View>
 
           <View style={{ gap: 10, marginTop: 10 }}>
@@ -671,10 +666,10 @@ const s = StyleSheet.create({
     backgroundColor: C.primaryContainer,
     borderWidth: 2, borderColor: C.surfaceLowest,
   },
-  greeting:  { fontSize: 11, color: C.onSurfaceVariant, fontWeight: '500' },
-  brandRow:  { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  greeting: { fontSize: 11, color: C.onSurfaceVariant, fontWeight: '500' },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   brandName: { fontSize: 20, fontWeight: '800', color: C.primary, letterSpacing: -0.4 },
-  bellBtn:   { padding: 8, borderRadius: 99, position: 'relative' },
+  bellBtn: { padding: 8, borderRadius: 99, position: 'relative' },
   bellBadge: {
     position: 'absolute', top: 4, right: 4,
     minWidth: 18, height: 18, borderRadius: 9,
@@ -706,16 +701,16 @@ const s = StyleSheet.create({
   },
   reminderBadgeText: { fontSize: 10, fontWeight: '700', color: C.error },
   reminderTitle: { fontSize: 14, fontWeight: '800', color: C.onSurface, marginTop: 2, lineHeight: 20 },
-  reminderSub:   { fontSize: 12, color: C.onSurfaceVariant, lineHeight: 17, marginTop: 3 },
+  reminderSub: { fontSize: 12, color: C.onSurfaceVariant, lineHeight: 17, marginTop: 3 },
   reminderFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   reminderLink: { fontSize: 12, fontWeight: '700', color: C.error },
   reminderSave: { fontSize: 11, color: C.outline, fontWeight: '500' },
 
   // ── Sections ──
-  section:       { marginTop: 16 },
+  section: { marginTop: 16 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  sectionTitle:  { fontSize: 16, fontWeight: '700', color: C.onSurface },
-  autoLabel:     { fontSize: 12, fontWeight: '700', color: C.primary },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: C.onSurface },
+  autoLabel: { fontSize: 12, fontWeight: '700', color: C.primary },
 
   // ── Add Button ──
   addBtn: {
@@ -763,7 +758,7 @@ const s = StyleSheet.create({
   sortValue: { fontSize: 12, fontWeight: '700', color: C.onSurface },
 
   // ── Empty ──
-  empty:      { alignItems: 'center', paddingVertical: 48, gap: 8 },
+  empty: { alignItems: 'center', paddingVertical: 48, gap: 8 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: '#374151' },
-  emptySub:   { fontSize: 14, color: '#9ca3af', textAlign: 'center' },
+  emptySub: { fontSize: 14, color: '#9ca3af', textAlign: 'center' },
 });

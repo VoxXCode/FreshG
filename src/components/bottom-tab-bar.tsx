@@ -76,6 +76,9 @@ export default function BottomTabBar({ state, navigation }: TabBarProps) {
     r => TABS.some(t => t.name === r.name),
   );
 
+  const currentRouteName = state.routes[state.index]?.name;
+  if (currentRouteName === 'login') return null;
+
   return (
     <View style={[s.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {visibleRoutes.map(route => {

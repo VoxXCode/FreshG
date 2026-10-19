@@ -2,55 +2,58 @@
  * FreshG – Pengaturan & Akun Screen
  * Faithful React Native translation of the HTML reference design.
  */
-import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  StatusBar,
-  Switch,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTabInset } from '@/constants/theme';
 import { useUserProfile } from '@/hooks/use-user-profile';
-import { formatRupiah } from '@/utils/format';
 import type { UserProfile } from '@/types/user';
+import { formatRupiah } from '@/utils/format';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // ─── Design Tokens ─────────────────────────────────────────────────────────────
 
 const C = {
-  primary:            '#006c49',
-  primaryContainer:   '#10b981',
-  onPrimary:          '#ffffff',
+  primary: '#006c49',
+  primaryContainer: '#10b981',
+  onPrimary: '#ffffff',
   onPrimaryContainer: '#00422b',
-  secondary:          '#006c4a',
+  secondary: '#006c4a',
   secondaryContainer: '#82f5c1',
   onSecondaryContainer: '#00714e',
-  surface:            '#f8f9ff',
-  surfaceContainer:   '#e5eeff',
-  surfaceContainerLow:'#eff4ff',
-  surfaceContainerHigh:'#dce9ff',
-  surfaceContainerHighest:'#d3e4fe',
-  surfaceLowest:      '#ffffff',
-  onSurface:          '#0b1c30',
-  onSurfaceVariant:   '#3c4a42',
-  outlineVariant:     '#bbcabf',
-  outline:            '#6c7a71',
-  error:              '#ba1a1a',
-  errorContainer:     '#ffdad6',
-  onErrorContainer:   '#93000a',
-  tertiary:           '#855300',
-  tertiaryContainer:  '#e29100',
-  tertiaryFixed:      '#ffddb8',
-  tertiaryFixedDim:   '#ffb95f',
-  onTertiaryContainer:'#523200',
-  background:         '#f8f9ff',
-  surfaceBright:      '#f8f9ff',
+  surface: '#f8f9ff',
+  surfaceContainer: '#e5eeff',
+  surfaceContainerLow: '#eff4ff',
+  surfaceContainerHigh: '#dce9ff',
+  surfaceContainerHighest: '#d3e4fe',
+  surfaceLowest: '#ffffff',
+  onSurface: '#0b1c30',
+  onSurfaceVariant: '#3c4a42',
+  outlineVariant: '#bbcabf',
+  outline: '#6c7a71',
+  error: '#ba1a1a',
+  errorContainer: '#ffdad6',
+  onErrorContainer: '#93000a',
+  tertiary: '#855300',
+  tertiaryContainer: '#e29100',
+  tertiaryFixed: '#ffddb8',
+  tertiaryFixedDim: '#ffb95f',
+  onTertiaryContainer: '#523200',
+  background: '#f8f9ff',
+  surfaceBright: '#f8f9ff',
 };
 
 // ─── Top App Bar ──────────────────────────────────────────────────────────────
@@ -109,7 +112,7 @@ type MIName = React.ComponentProps<typeof MaterialIcons>['name'];
 
 const ZONE_BADGE: Record<string, { bg: string; color: string; icon: MIName }> = {
   'Kulkas / Chiller': { bg: '#E0F2FE', color: '#0369A1', icon: 'ac-unit' },
-  'Freezer Beku':     { bg: '#EEF2FF', color: '#4338CA', icon: 'severe-cold' },
+  'Freezer Beku': { bg: '#EEF2FF', color: '#4338CA', icon: 'severe-cold' },
   'Suhu Ruang / Pantry': { bg: '#FEF3C7', color: '#B45309', icon: 'wb-sunny' },
 };
 
@@ -126,6 +129,40 @@ export default function PengaturanScreen() {
   const [notif1, setNotif1] = useState(true);
   const [notif2, setNotif2] = useState(true);
   const [notif3, setNotif3] = useState(true);
+
+  // URL API Logout
+  const API_LOGOUT_URL = Platform.select({
+    android: 'http://10.0.2.2:3000/api/logout',
+    default: 'http://localhost:3000/api/logout',
+  });
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Konfirmasi Keluar',
+      'Apakah Anda yakin ingin keluar dari akun FreshG?',
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Keluar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Panggil endpoint POST /api/logout sesuai standar REST API Modul 2
+              await fetch(API_LOGOUT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+              });
+            } catch (err) {
+              console.log('Logout fetch error:', err);
+            } finally {
+              // Navigasi kembali ke layar Login
+              router.replace('/login');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (loading || !user) {
     return (
@@ -392,7 +429,7 @@ export default function PengaturanScreen() {
 
         {/* Footer */}
         <View style={s.footer}>
-          <TouchableOpacity style={s.btnLogout} activeOpacity={0.8}>
+          <TouchableOpacity style={s.btnLogout} activeOpacity={0.8} onPress={handleLogout}>
             <MaterialIcons name="logout" size={20} color={C.error} />
             <Text style={s.btnLogoutTxt}>Keluar Akun</Text>
           </TouchableOpacity>
@@ -415,7 +452,7 @@ const s = StyleSheet.create({
   headerSub: { fontSize: 14, color: C.onSurfaceVariant, marginTop: 2 },
 
   card: { backgroundColor: C.surfaceLowest, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.surfaceContainerHigh + 'CC', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-  
+
   // Profile
   profileTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   profileAvatarWrap: { position: 'relative' },
@@ -427,7 +464,7 @@ const s = StyleSheet.create({
   memberBadge: { backgroundColor: C.secondaryContainer, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
   memberBadgeTxt: { fontSize: 11, fontWeight: '600', color: C.onSecondaryContainer },
   profileEmail: { fontSize: 13, fontWeight: '500', color: C.outline },
-  
+
   profileBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: C.surfaceContainer + 'B3', marginTop: 12, paddingTop: 12 },
   memberId: { fontSize: 11, fontWeight: '500', color: C.outline },
   btnEditProfile: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: C.primary + '4D' },
@@ -465,7 +502,7 @@ const s = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: C.surfaceContainer, alignItems: 'center', justifyContent: 'center' },
-  
+
   themeToggle: { flexDirection: 'row', backgroundColor: C.surfaceContainer, borderRadius: 12, borderWidth: 1, borderColor: C.surfaceContainerHigh, padding: 4 },
   themeBtn: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
   themeBtnActive: { backgroundColor: C.surfaceLowest, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 1, elevation: 1 },

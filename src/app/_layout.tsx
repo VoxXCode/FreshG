@@ -24,6 +24,7 @@ export default function TabLayout() {
 
         {/* Hidden – not shown in tab bar */}
         <Tabs.Screen name="explore"     options={{ href: null }} />
+        <Tabs.Screen name="login"       options={{ href: null, tabBarStyle: { display: 'none' } }} />
       </Tabs>
     </ThemeProvider>
   );
