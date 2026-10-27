@@ -2,7 +2,7 @@
  * FreshG – Pengaturan & Akun Screen
  * Faithful React Native translation of the HTML reference design.
  */
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,8 +18,9 @@ import { Image } from 'expo-image';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTabInset } from '@/constants/theme';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { useIngredients } from '@/hooks/use-ingredients';
+import { getDaysUntilExpiry, type Ingredient } from '@/types/ingredient';
 import { formatRupiah } from '@/utils/format';
-import type { UserProfile } from '@/types/user';
 
 // ─── Design Tokens ─────────────────────────────────────────────────────────────
 
@@ -55,26 +56,25 @@ const C = {
 
 // ─── Top App Bar ──────────────────────────────────────────────────────────────
 
-function TopAppBar({ user }: { user?: UserProfile }) {
+function TopAppBar({ urgentCount = 0 }: { urgentCount?: number }) {
   return (
-    <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface + 'F2' }}>
-      <View style={appBar.container}>
-        <View style={appBar.left}>
-          <View style={appBar.avatarWrap}>
-            <Image
-              source={{ uri: user?.avatarUrl || 'https://ui-avatars.com/api/?name=User&background=10b981&color=fff' }}
-              style={appBar.avatar}
-              contentFit="cover"
-            />
-          </View>
+    <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface }}>
+      <View style={appBar.header}>
+        <View style={appBar.headerLeft}>
           <View>
-            <Text style={appBar.title}>FreshG</Text>
-            <Text style={appBar.subtitle}>Smart Kitchen Management</Text>
+            <View style={appBar.brandRow}>
+              <Text style={appBar.brandName}>FreshG</Text>
+              <MaterialCommunityIcons name="leaf" size={18} color={C.primaryContainer} />
+            </View>
           </View>
         </View>
-        <TouchableOpacity style={appBar.notifBtn} activeOpacity={0.7}>
-          <MaterialIcons name="notifications" size={20} color={C.onSurfaceVariant} />
-          <View style={appBar.notifBadge} />
+        <TouchableOpacity style={appBar.bellBtn} activeOpacity={0.8}>
+          <MaterialIcons name="notifications" size={24} color={C.onSurface} />
+          {urgentCount > 0 && (
+            <View style={appBar.bellBadge}>
+              <Text style={appBar.bellBadgeText}>{urgentCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -82,45 +82,37 @@ function TopAppBar({ user }: { user?: UserProfile }) {
 }
 
 const appBar = StyleSheet.create({
-  container: {
+  header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: C.surfaceContainer + '99',
+    paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: C.surface,
+    borderBottomWidth: 1, borderBottomColor: C.surfaceContainer,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 2, elevation: 2,
   },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatarWrap: {
-    width: 36, height: 36, borderRadius: 18, overflow: 'hidden',
-    borderWidth: 2, borderColor: C.primaryContainer + 'CC', backgroundColor: C.surfaceLowest, padding: 2,
-  },
-  avatar: { width: '100%', height: '100%', borderRadius: 16 },
-  title: { fontSize: 16, fontWeight: '700', color: C.primary, letterSpacing: -0.2 },
-  subtitle: { fontSize: 10, fontWeight: '500', color: C.outline },
-  notifBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  notifBadge: {
-    position: 'absolute', top: 8, right: 8, width: 8, height: 8,
-    borderRadius: 4, backgroundColor: C.error,
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  brandRow:  { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  brandName: { fontSize: 20, fontWeight: '800', color: C.primary, letterSpacing: -0.4 },
+  bellBtn:   { padding: 8, borderRadius: 99, position: 'relative' },
+  bellBadge: {
+    position: 'absolute', top: 4, right: 4,
+    minWidth: 18, height: 18, borderRadius: 9,
+    backgroundColor: C.error,
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 4,
     borderWidth: 2, borderColor: C.surface,
   },
+  bellBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-type MIName = React.ComponentProps<typeof MaterialIcons>['name'];
-
-const ZONE_BADGE: Record<string, { bg: string; color: string; icon: MIName }> = {
-  'Kulkas / Chiller': { bg: '#E0F2FE', color: '#0369A1', icon: 'ac-unit' },
-  'Freezer Beku':     { bg: '#EEF2FF', color: '#4338CA', icon: 'severe-cold' },
-  'Suhu Ruang / Pantry': { bg: '#FEF3C7', color: '#B45309', icon: 'wb-sunny' },
-};
-
-const DEFAULT_ZONES = [
-  { name: 'Kulkas / Chiller', defaultTemp: '4°C', description: 'Notifikasi auto-expiry aktif pada sayur & susu.' },
-  { name: 'Freezer Beku', defaultTemp: '-18°C', description: 'Pengingat freezer-burn interval 3 bulan.' },
-  { name: 'Suhu Ruang / Pantry', defaultTemp: '', description: 'Peringatan kelembapan dan masa simpan umbi.' },
-];
-
 export default function PengaturanScreen() {
   const { data: user, loading } = useUserProfile();
+  const { data: ingredients } = useIngredients();
+
+  const urgentCount = useMemo(() => (ingredients ?? [])
+    .filter((i: Ingredient) => i.status === 'active' && getDaysUntilExpiry(i.expiryDate) <= 2).length, [ingredients]);
 
   const [isDark, setIsDark] = useState(false);
   const [notif1, setNotif1] = useState(true);
@@ -138,7 +130,7 @@ export default function PengaturanScreen() {
   return (
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
-      <TopAppBar user={user} />
+      <TopAppBar urgentCount={urgentCount} />
 
       <ScrollView
         contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 40 }]}
@@ -304,45 +296,7 @@ export default function PengaturanScreen() {
           </View>
         </View>
 
-        {/* Group 3: Manajemen Tempat Simpan Dapur */}
-        <View style={s.group}>
-          <View style={s.groupHeaderRow}>
-            <Text style={s.groupTitleNoMargin}>TEMPAT SIMPAN</Text>
-            <TouchableOpacity activeOpacity={0.7} style={s.groupHeaderAction}>
-              <Text style={s.groupHeaderActionTxt}>+ Tambah Zona</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={s.cardList}>
-            <View style={s.listHeader}>
-              <MaterialCommunityIcons name="storefront-outline" size={18} color={C.primary} />
-              <Text style={s.listHeaderTitle}>Manajemen Tempat Simpan Dapur</Text>
-            </View>
-
-            {DEFAULT_ZONES.map((zone: any, index: number) => {
-              const badgeInfo = ZONE_BADGE[zone.name] || { bg: '#E2E8F0', color: '#475569', icon: 'kitchen' };
-              return (
-                <TouchableOpacity key={zone.name} style={[s.zoneItem, index > 0 && s.listBorder]} activeOpacity={0.7}>
-                  <View style={s.zoneContent}>
-                    <View style={s.zoneTitleRow}>
-                      <View style={[s.zoneBadge, { backgroundColor: badgeInfo.bg }]}>
-                        <Text style={[s.zoneBadgeTxt, { color: badgeInfo.color }]}>{zone.name}</Text>
-                      </View>
-                      <MaterialIcons name={badgeInfo.icon} size={16} color={badgeInfo.color} />
-                      <Text style={s.zoneTitleTxt}>{zone.defaultTemp ? `Suhu default: ${zone.defaultTemp}` : 'Penyimpanan Kering'}</Text>
-                    </View>
-                    <Text style={s.itemDesc}>{zone.description}</Text>
-                  </View>
-                  <View style={s.zoneAction}>
-                    <Text style={s.zoneActionTxt}>Atur Parameter</Text>
-                    <MaterialIcons name="chevron-right" size={16} color={C.primary} />
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Group 4: Akun & Bantuan */}
+        {/* Group 3: Akun & Bantuan */}
         <View style={s.group}>
           <Text style={s.groupTitle}>AKUN & BANTUAN</Text>
           <View style={s.cardList}>
@@ -457,10 +411,6 @@ const s = StyleSheet.create({
   // Grouped Lists
   group: { gap: 6 },
   groupTitle: { fontSize: 11, fontWeight: '700', color: C.outline, paddingHorizontal: 4, letterSpacing: 0.5 },
-  groupTitleNoMargin: { fontSize: 11, fontWeight: '700', color: C.outline, letterSpacing: 0.5 },
-  groupHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
-  groupHeaderAction: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  groupHeaderActionTxt: { fontSize: 11, fontWeight: '700', color: C.primary },
 
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -483,15 +433,6 @@ const s = StyleSheet.create({
   itemDesc: { fontSize: 14, color: C.outline, lineHeight: 20 },
   itemBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surfaceContainer, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginTop: 4 },
   itemBadgeTxt: { fontSize: 11, fontWeight: '500', color: C.primary },
-
-  zoneItem: { padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  zoneContent: { flex: 1, gap: 4, paddingRight: 12 },
-  zoneTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  zoneBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
-  zoneBadgeTxt: { fontSize: 11, fontWeight: '700' },
-  zoneTitleTxt: { fontSize: 13, fontWeight: '700', color: C.onSurface },
-  zoneAction: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  zoneActionTxt: { fontSize: 11, fontWeight: '700', color: C.primary },
 
   linkItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, gap: 12 },
   linkLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },

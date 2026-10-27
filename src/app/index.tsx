@@ -120,8 +120,8 @@ function FreshnessBar({ percent, status }: { percent: number; status: FreshnessS
   return (
     <View style={pb.wrap}>
       <View style={pb.labelRow}>
-        <Text style={[pb.label, { color: cfg.color }]}>{freshnessLabel}</Text>
-        <Text style={[pb.pct, { color: cfg.color }]}>Sisa {percent}%</Text>
+        <Text style={pb.label}>{freshnessLabel}</Text>
+        <Text style={pb.pct}>Sisa {percent}%</Text>
       </View>
       <View style={pb.track}>
         <View style={[pb.fill, { width: `${percent}%`, backgroundColor: cfg.barColor }]} />
@@ -133,8 +133,8 @@ function FreshnessBar({ percent, status }: { percent: number; status: FreshnessS
 const pb = StyleSheet.create({
   wrap:     { marginTop: 10 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  label:    { fontSize: 11, fontWeight: '700' },
-  pct:      { fontSize: 11, fontWeight: '700' },
+  label:    { fontSize: 11, fontWeight: '700', color: '#000000' },
+  pct:      { fontSize: 11, fontWeight: '700', color: '#000000' },
   track:    { height: 6, backgroundColor: '#e5eeff', borderRadius: 99, overflow: 'hidden' },
   fill:     { height: '100%', borderRadius: 99 },
 });
@@ -158,29 +158,24 @@ const pill = StyleSheet.create({
 
 // ─── Freshness Badge ──────────────────────────────────────────────────────────
 
-function FreshnessBadge({ status, daysLeft }: { status: FreshnessStatus; daysLeft: number }) {
-  const cfg = FRESHNESS_CONFIG[status];
+function FreshnessBadge({ daysLeft }: { status?: FreshnessStatus; daysLeft: number }) {
   const label =
-    daysLeft < 0   ? 'Kedaluwarsa'             :
-    daysLeft === 0 ? `${cfg.label} - Hari ini`  :
-    `${cfg.label} - ${daysLeft} Hari`;
+    daysLeft < 0   ? 'Kedaluwarsa' :
+    daysLeft === 0 ? 'Hari ini'    :
+    `${daysLeft} Hari`;
 
   return (
-    <View style={[fb.wrap, { backgroundColor: cfg.bgColor, borderColor: cfg.color + '33' }]}>
-      <View style={[fb.dot, { backgroundColor: cfg.dotColor }]} />
-      <Text style={[fb.text, { color: cfg.color }]}>{label}</Text>
+    <View style={fb.wrap}>
+      <Text style={fb.text}>{label}</Text>
     </View>
   );
 }
 
 const fb = StyleSheet.create({
   wrap: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5,
-    borderWidth: 1, alignSelf: 'flex-start',
+    alignSelf: 'flex-start',
   },
-  dot:  { width: 6, height: 6, borderRadius: 3 },
-  text: { fontSize: 11, fontWeight: '700' },
+  text: { fontSize: 11, fontWeight: '700', color: '#000000' },
 });
 
 // ─── Ingredient Card ──────────────────────────────────────────────────────────
@@ -204,20 +199,11 @@ function IngredientCard({
     <View style={[ic.card, isExpiring && ic.cardUrgent]}>
       {/* Top row */}
       <View style={ic.topRow}>
-        {/* Icon */}
-        <View style={[ic.iconWrap, { backgroundColor: catBg }]}>
-          <MaterialCommunityIcons
-            name={CATEGORY_MC[item.category]}
-            size={24}
-            color={cfg.color}
-          />
-        </View>
 
         {/* Name + meta */}
         <View style={{ flex: 1 }}>
           <Text style={ic.name} numberOfLines={1}>{item.name}</Text>
           <View style={ic.metaRow}>
-            <StoragePill location={item.storageLocation} />
             {item.quantity && (
               <Text style={ic.quantity}>{item.quantity}</Text>
             )}
@@ -266,13 +252,13 @@ const ic = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.outlineVariant + '99',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
   cardUrgent: {
-    borderColor: C.error + '33',
+    borderColor: C.outlineVariant + '99',
   },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconWrap: {
@@ -415,6 +401,8 @@ const st = StyleSheet.create({
     backgroundColor: C.tertiaryFixed + '66',
     borderRadius: 16, padding: 14,
     borderWidth: 1, borderColor: C.tertiaryFixedDim + '99',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
   iconCol:  { paddingTop: 2 },
   iconWrap: {
@@ -547,36 +535,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.scroll, { paddingBottom: BottomTabInset + 32 }]}
       >
-        {/* ── SECTION 1: Smart Reminder Banner ── */}
-        {urgentCount > 0 && (
-          <View style={s.reminderCard}>
-            <View style={s.reminderIconWrap}>
-              <MaterialIcons name="warning" size={22} color={C.error} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={s.reminderTopRow}>
-                <Text style={s.reminderChip}>SMART REMINDER</Text>
-                <View style={s.reminderBadge}>
-                  <Text style={s.reminderBadgeText}>Segera Masak</Text>
-                </View>
-              </View>
-              <Text style={s.reminderTitle}>
-                {urgentCount} bahan mendekati masa simpan!
-              </Text>
-              <Text style={s.reminderSub}>
-                {urgentNames} perlu dimasak hari ini agar nutrisinya tetap optimal.
-              </Text>
-              <View style={s.reminderFooter}>
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
-                  activeOpacity={0.8}>
-                  <Text style={s.reminderLink}>Lihat Semua ({urgentCount})</Text>
-                  <MaterialIcons name="arrow-forward" size={14} color={C.error} />
-                </TouchableOpacity>
-                <Text style={s.reminderSave}>Hemat ±Rp 32.000</Text>
-              </View>
-            </View>
-          </View>
-        )}
+        
 
         {/* ── SECTION 2: Quick Input & Category Presets ── */}
         

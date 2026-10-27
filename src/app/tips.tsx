@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTabInset } from '@/constants/theme';
 import { useIngredients } from '@/hooks/use-ingredients';
 import { useRecipes, useGuides } from '@/hooks/use-recipes';
@@ -60,68 +60,53 @@ const C = {
 
 // ─── Top App Bar ──────────────────────────────────────────────────────────────
 
-function TopAppBar() {
+function TopAppBar({ urgentCount = 0 }: { urgentCount?: number }) {
   return (
-    <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface + 'F2' }}>
-      <View style={appBar.container}>
-        <View style={appBar.left}>
-          <View style={appBar.logoWrap}>
-            <MaterialIcons name="eco" size={24} color={C.primary} />
+    <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface }}>
+      <View style={appBar.header}>
+        <View style={appBar.headerLeft}>
+          <View>
+            <View style={appBar.brandRow}>
+              <Text style={appBar.brandName}>FreshG</Text>
+              <MaterialCommunityIcons name="leaf" size={18} color={C.primaryContainer} />
+            </View>
           </View>
-          <Text style={appBar.title}>FreshG</Text>
         </View>
-        <View style={appBar.actions}>
-          <TouchableOpacity style={appBar.actionBtn} activeOpacity={0.7}>
-            <MaterialIcons name="bookmark" size={20} color={C.onSurfaceVariant} />
-            <View style={appBar.badgeDotPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={appBar.actionBtn} activeOpacity={0.7}>
-            <MaterialIcons name="notifications" size={20} color={C.onSurfaceVariant} />
-            <View style={appBar.badgeDotError} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={appBar.bellBtn} activeOpacity={0.8}>
+          <MaterialIcons name="notifications" size={24} color={C.onSurface} />
+          {urgentCount > 0 && (
+            <View style={appBar.bellBadge}>
+              <Text style={appBar.bellBadgeText}>{urgentCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
-      <View style={appBar.bottomBorder} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={appBar.scrollTags}>
-        <TouchableOpacity style={appBar.tagActive} activeOpacity={0.8}>
-          <MaterialIcons name="restaurant-menu" size={14} color={C.onPrimary} />
-          <Text style={appBar.tagTxtActive}>Rekomendasi Resep</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={appBar.tag} activeOpacity={0.8}>
-          <MaterialIcons name="kitchen" size={14} color={C.onSurfaceVariant} />
-          <Text style={appBar.tagTxt}>Cara Simpan Bahan</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={appBar.tag} activeOpacity={0.8}>
-          <MaterialIcons name="inventory" size={14} color={C.onSurfaceVariant} />
-          <Text style={appBar.tagTxt}>Trik Food Prep</Text>
-        </TouchableOpacity>
-      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const appBar = StyleSheet.create({
-  container: {
+  header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: C.surface,
+    borderBottomWidth: 1, borderBottomColor: C.surfaceContainer,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 2, elevation: 2,
   },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  logoWrap: {
-    width: 36, height: 36, borderRadius: 12, backgroundColor: C.secondaryContainer,
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  brandRow:  { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  brandName: { fontSize: 20, fontWeight: '800', color: C.primary, letterSpacing: -0.4 },
+  bellBtn:   { padding: 8, borderRadius: 99, position: 'relative' },
+  bellBadge: {
+    position: 'absolute', top: 4, right: 4,
+    minWidth: 18, height: 18, borderRadius: 9,
+    backgroundColor: C.error,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1, elevation: 1,
+    paddingHorizontal: 4,
+    borderWidth: 2, borderColor: C.surface,
   },
-  title: { fontSize: 20, fontWeight: '800', color: C.primary, letterSpacing: -0.5 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  actionBtn: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  badgeDotPrimary: { position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: C.primaryContainer },
-  badgeDotError: { position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: C.error },
-  bottomBorder: { height: 1, backgroundColor: C.surfaceContainer + '80' },
-  scrollTags: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
-  tagActive: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.primaryContainer, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
-  tagTxtActive: { fontSize: 13, fontWeight: '700', color: C.onPrimary },
-  tag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surfaceLowest, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: C.outlineVariant + '80' },
-  tagTxt: { fontSize: 13, fontWeight: '600', color: C.onSurfaceVariant },
+  bellBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -241,7 +226,7 @@ export default function TipsScreen() {
   return (
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
-      <TopAppBar />
+      <TopAppBar urgentCount={critical.length} />
 
       <ScrollView
         contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 40 }]}
@@ -256,6 +241,22 @@ export default function TipsScreen() {
           <Text style={s.pageTitle}>Tips & Inspirasi Masak</Text>
           <Text style={s.pageSub}>Olah bahan sebelum kedaluwarsa & cegah food waste dengan panduan teruji.</Text>
         </View>
+
+        {/* Category Tags */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.scrollTags}>
+          <TouchableOpacity style={s.tagActive} activeOpacity={0.8}>
+            <MaterialIcons name="restaurant-menu" size={14} color={C.onPrimary} />
+            <Text style={s.tagTxtActive}>Rekomendasi Resep</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.tag} activeOpacity={0.8}>
+            <MaterialIcons name="kitchen" size={14} color={C.onSurfaceVariant} />
+            <Text style={s.tagTxt}>Cara Simpan Bahan</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.tag} activeOpacity={0.8}>
+            <MaterialIcons name="inventory" size={14} color={C.onSurfaceVariant} />
+            <Text style={s.tagTxt}>Trik Food Prep</Text>
+          </TouchableOpacity>
+        </ScrollView>
 
         {/* Hero Card */}
         {featured && (
@@ -408,6 +409,13 @@ const s = StyleSheet.create({
   pulseTxt: { fontSize: 11, fontWeight: '700', color: C.primary, letterSpacing: 0.5 },
   pageTitle: { fontSize: 24, fontWeight: '800', color: C.onSurface, letterSpacing: -0.2 },
   pageSub: { fontSize: 14, color: C.onSurfaceVariant, lineHeight: 22 },
+
+  // Tags
+  scrollTags: { gap: 8, paddingVertical: 4 },
+  tagActive: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.primaryContainer, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2, elevation: 2 },
+  tagTxtActive: { fontSize: 13, fontWeight: '700', color: C.onPrimary },
+  tag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surfaceLowest, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: C.outlineVariant + '80' },
+  tagTxt: { fontSize: 13, fontWeight: '600', color: C.onSurfaceVariant },
 
   // Hero Card
   heroCard: { borderRadius: 16, padding: 16, paddingBottom: 20, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4 },

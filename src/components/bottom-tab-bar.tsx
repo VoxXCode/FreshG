@@ -9,11 +9,10 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
 const C = {
-  secondaryContainer:   '#82f5c1',
-  onSecondaryContainer: '#00714e',
-  surfaceLowest:        '#ffffff',
-  outlineVariant:       '#bbcabf',
-  onSurfaceVariant:     '#3c4a42',
+  primary:          '#006c49',
+  surfaceLowest:    '#ffffff',
+  outlineVariant:   '#bbcabf',
+  onSurfaceVariant: '#6c7a71',
 };
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
@@ -61,9 +60,6 @@ const TABS: TabDef[] = [
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
-// Using `any` for navigation to avoid importing @react-navigation/bottom-tabs
-// just for its complex generic types, which aren't installed in this project.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type TabBarProps = { state: any; navigation: any };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -72,7 +68,7 @@ export default function BottomTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
 
   // Only render routes that appear in our TABS definition (hides 'explore' etc.)
-  const visibleRoutes = (state.routes as Array<{ key: string; name: string }>).filter(
+  const visibleRoutes = (state.routes as { key: string; name: string }[]).filter(
     r => TABS.some(t => t.name === r.name),
   );
 
@@ -81,7 +77,7 @@ export default function BottomTabBar({ state, navigation }: TabBarProps) {
       {visibleRoutes.map(route => {
         const tabDef  = TABS.find(t => t.name === route.name)!;
         const focused = state.routes[state.index]?.name === route.name;
-        const color   = focused ? C.onSecondaryContainer : C.onSurfaceVariant;
+        const color   = focused ? C.primary : C.onSurfaceVariant;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -98,13 +94,15 @@ export default function BottomTabBar({ state, navigation }: TabBarProps) {
           <TouchableOpacity
             key={route.key}
             onPress={onPress}
-            activeOpacity={0.85}
-            style={[s.tab, focused && s.tabActive]}
+            activeOpacity={0.7}
+            style={s.tab}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
           >
             {tabDef.renderIcon(focused, color)}
-            <Text style={[s.label, { color }]}>{tabDef.label}</Text>
+            <Text style={[s.label, { color, fontWeight: focused ? '700' : '500' }]}>
+              {tabDef.label}
+            </Text>
           </TouchableOpacity>
         );
       })}
@@ -121,7 +119,7 @@ const s = StyleSheet.create({
     justifyContent: 'space-around',
     backgroundColor: C.surfaceLowest,
     borderTopWidth: 1,
-    borderTopColor: C.outlineVariant,
+    borderTopColor: C.outlineVariant + '44',
     paddingTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
@@ -132,17 +130,13 @@ const s = StyleSheet.create({
   tab: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  tabActive: {
-    backgroundColor: C.secondaryContainer,
+    gap: 3,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   label: {
     fontSize: 10,
-    fontWeight: '600',
     letterSpacing: 0.1,
-  }
+  },
 });
