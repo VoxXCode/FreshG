@@ -2,7 +2,7 @@
  * FreshG – Home / Beranda Screen
  * Faithful React Native translation of the HTML reference design.
  */
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,11 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Animated,
   Platform,
   StatusBar,
-  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 import {
   MaterialIcons,
   MaterialCommunityIcons,
@@ -31,50 +29,22 @@ import {
   type StorageLocation,
   type FreshnessStatus,
   type IngredientStatus,
-  CATEGORIES,
-  STORAGE_LOCATIONS,
   FRESHNESS_CONFIG,
   STORAGE_TIPS,
-  DEFAULT_EXPIRY_DAYS,
   getFreshnessStatus,
   getDaysUntilExpiry,
   getFreshnessPercent,
 } from '@/types/ingredient';
 import { BottomTabInset } from '@/constants/theme';
 import { useIngredients } from '@/hooks/use-ingredients';
-
-// ─── Design Tokens (translated from Tailwind config) ─────────────────────────
-
-const C = {
-  primary:            '#006c49',
-  primaryContainer:   '#10b981',
-  onPrimary:          '#ffffff',
-  onPrimaryContainer: '#00422b',
-  secondary:          '#006c4a',
-  secondaryContainer: '#82f5c1',
-  onSecondaryContainer: '#00714e',
-  surface:            '#f8f9ff',
-  surfaceContainer:   '#e5eeff',
-  surfaceContainerLow:'#eff4ff',
-  surfaceLowest:      '#ffffff',
-  onSurface:          '#0b1c30',
-  onSurfaceVariant:   '#3c4a42',
-  outlineVariant:     '#bbcabf',
-  outline:            '#6c7a71',
-  error:              '#ba1a1a',
-  errorContainer:     '#ffdad6',
-  onErrorContainer:   '#93000a',
-  tertiary:           '#855300',
-  tertiaryContainer:  '#e29100',
-  tertiaryFixed:      '#ffddb8',
-  tertiaryFixedDim:   '#ffb95f',
-  onTertiaryContainer:'#523200',
-};
+import { ErrorState } from '@/components/ui/error-state';
+import { IngredientListSkeleton } from '@/components/ui/loading-skeleton';
+import { useAppTheme } from '@/context/theme-context';
+import type { FreshGColors } from '@/constants/theme-colors';
 
 // ─── Category icon map ────────────────────────────────────────────────────────
 
 type MCName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-type MIName = React.ComponentProps<typeof MaterialIcons>['name'];
 
 const CATEGORY_MC: Record<Category, MCName> = {
   'Sayuran':         'sprout',
@@ -103,14 +73,18 @@ const STORAGE_ICON: Record<StorageLocation, { icon: string; bg: string; color: s
   'Lemari':      { icon: 'file-tray-stacked-outline',   bg: '#f3f4f6', color: '#6b7280' },
 };
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-// Data bahan diambil dari server lewat useIngredients():
-// src/data/server/ingredients.json → IngredientDTO → toIngredient() → Ingredient
-
 // ─── Freshness Progress Bar ───────────────────────────────────────────────────
 
 function FreshnessBar({ percent, status }: { percent: number; status: FreshnessStatus }) {
+  const { colors: C, isDark } = useAppTheme();
   const cfg = FRESHNESS_CONFIG[status];
+  const barColor = isDark
+    ? status === 'fresh' ? '#10b981' : status === 'warning' ? '#f59e0b' : '#ef4444'
+    : cfg.barColor;
+  const textColor = isDark
+    ? status === 'fresh' ? '#34d399' : status === 'warning' ? '#fbbf24' : '#f87171'
+    : cfg.color;
+
   const freshnessLabel =
     status === 'fresh'    ? 'Kondisi Sangat Segar' :
     status === 'warning'  ? 'Perlu Perhatian'       :
@@ -120,11 +94,11 @@ function FreshnessBar({ percent, status }: { percent: number; status: FreshnessS
   return (
     <View style={pb.wrap}>
       <View style={pb.labelRow}>
-        <Text style={[pb.label, { color: cfg.color }]}>{freshnessLabel}</Text>
-        <Text style={[pb.pct, { color: cfg.color }]}>Sisa {percent}%</Text>
+        <Text style={[pb.label, { color: textColor }]}>{freshnessLabel}</Text>
+        <Text style={[pb.pct, { color: textColor }]}>Sisa {percent}%</Text>
       </View>
-      <View style={pb.track}>
-        <View style={[pb.fill, { width: `${percent}%`, backgroundColor: cfg.barColor }]} />
+      <View style={[pb.track, { backgroundColor: C.surfaceContainer }]}>
+        <View style={[pb.fill, { width: `${percent}%`, backgroundColor: barColor }]} />
       </View>
     </View>
   );
@@ -135,18 +109,28 @@ const pb = StyleSheet.create({
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   label:    { fontSize: 11, fontWeight: '700' },
   pct:      { fontSize: 11, fontWeight: '700' },
-  track:    { height: 6, backgroundColor: '#e5eeff', borderRadius: 99, overflow: 'hidden' },
+  track:    { height: 6, borderRadius: 99, overflow: 'hidden' },
   fill:     { height: '100%', borderRadius: 99 },
 });
 
 // ─── Storage Location Pill ────────────────────────────────────────────────────
 
 function StoragePill({ location }: { location: StorageLocation }) {
-  const { bg, color, icon } = STORAGE_ICON[location];
+  const { isDark } = useAppTheme();
+  const base = STORAGE_ICON[location] || { icon: 'cube-outline', bg: '#f3f4f6', color: '#6b7280' };
+  const darkStorageStyles: Partial<Record<StorageLocation, { bg: string; color: string }>> = {
+    'Kulkas':     { bg: '#082f49', color: '#38bdf8' },
+    'Freezer':    { bg: '#1e1b4b', color: '#818cf8' },
+    'Suhu Ruang': { bg: '#451a03', color: '#fbbf24' },
+    'Lemari':     { bg: '#1e293b', color: '#94a3b8' },
+  };
+  const darkOverride = isDark ? darkStorageStyles[location] : undefined;
+  const style = darkOverride ? { ...base, ...darkOverride } : base;
+
   return (
-    <View style={[pill.wrap, { backgroundColor: bg }]}>
-      <Ionicons name={icon as any} size={11} color={color} />
-      <Text style={[pill.text, { color }]}>{location}</Text>
+    <View style={[pill.wrap, { backgroundColor: style.bg }]}>
+      <Ionicons name={style.icon as any} size={11} color={style.color} />
+      <Text style={[pill.text, { color: style.color }]}>{location}</Text>
     </View>
   );
 }
@@ -159,16 +143,24 @@ const pill = StyleSheet.create({
 // ─── Freshness Badge ──────────────────────────────────────────────────────────
 
 function FreshnessBadge({ status, daysLeft }: { status: FreshnessStatus; daysLeft: number }) {
+  const { isDark } = useAppTheme();
   const cfg = FRESHNESS_CONFIG[status];
   const label =
     daysLeft < 0   ? 'Kedaluwarsa'             :
     daysLeft === 0 ? `${cfg.label} - Hari ini`  :
     `${cfg.label} - ${daysLeft} Hari`;
 
+  const badgeColor = isDark
+    ? status === 'fresh' ? '#34d399' : status === 'warning' ? '#fbbf24' : '#f87171'
+    : cfg.color;
+  const badgeBg = isDark
+    ? status === 'fresh' ? 'rgba(52,211,153,0.18)' : status === 'warning' ? 'rgba(251,191,36,0.18)' : 'rgba(248,113,113,0.2)'
+    : cfg.bgColor;
+
   return (
-    <View style={[fb.wrap, { backgroundColor: cfg.bgColor, borderColor: cfg.color + '33' }]}>
-      <View style={[fb.dot, { backgroundColor: cfg.dotColor }]} />
-      <Text style={[fb.text, { color: cfg.color }]}>{label}</Text>
+    <View style={[fb.wrap, { backgroundColor: badgeBg, borderColor: badgeColor + '40' }]}>
+      <View style={[fb.dot, { backgroundColor: badgeColor }]} />
+      <Text style={[fb.text, { color: badgeColor }]}>{label}</Text>
     </View>
   );
 }
@@ -192,16 +184,35 @@ function IngredientCard({
   onUse: (id: string) => void;
   onDiscard: (id: string) => void;
 }) {
+  const { colors: C, isDark } = useAppTheme();
   const status   = getFreshnessStatus(item.expiryDate);
   const daysLeft = getDaysUntilExpiry(item.expiryDate);
   const percent  = getFreshnessPercent(daysLeft, item.totalDays);
-  const catBg    = CATEGORY_BG[item.category];
   const cfg      = FRESHNESS_CONFIG[status];
-
   const isExpiring = status === 'expiring' || status === 'expired';
 
+  const darkCategoryBgs: Record<Category, string> = {
+    'Sayuran':         '#064e3b',
+    'Buah-buahan':     '#831843',
+    'Bumbu Dapur':     '#713f12',
+    'Daging & Olahan': '#7f1d1d',
+    'Susu & Telur':    '#4c1d95',
+    'Herbal':          '#065f46',
+    'Kering':          '#78350f',
+  };
+  const catBg = isDark ? (darkCategoryBgs[item.category] || '#1e293b') : CATEGORY_BG[item.category];
+  const iconColor = isDark
+    ? status === 'fresh' ? '#34d399' : status === 'warning' ? '#fbbf24' : '#f87171'
+    : cfg.color;
+
   return (
-    <View style={[ic.card, isExpiring && ic.cardUrgent]}>
+    <View style={[
+      ic.card,
+      {
+        backgroundColor: C.surfaceLowest,
+        borderColor: isExpiring ? (C.error + (isDark ? '66' : '33')) : (C.outlineVariant + (isDark ? '40' : '99')),
+      },
+    ]}>
       {/* Top row */}
       <View style={ic.topRow}>
         {/* Icon */}
@@ -209,17 +220,17 @@ function IngredientCard({
           <MaterialCommunityIcons
             name={CATEGORY_MC[item.category]}
             size={24}
-            color={cfg.color}
+            color={iconColor}
           />
         </View>
 
         {/* Name + meta */}
         <View style={{ flex: 1 }}>
-          <Text style={ic.name} numberOfLines={1}>{item.name}</Text>
+          <Text style={[ic.name, { color: C.onSurface }]} numberOfLines={1}>{item.name}</Text>
           <View style={ic.metaRow}>
             <StoragePill location={item.storageLocation} />
             {item.quantity && (
-              <Text style={ic.quantity}>{item.quantity}</Text>
+              <Text style={[ic.quantity, { color: C.outline }]}>{item.quantity}</Text>
             )}
           </View>
         </View>
@@ -232,12 +243,12 @@ function IngredientCard({
       <FreshnessBar percent={percent} status={status} />
 
       {/* Divider */}
-      <View style={ic.divider} />
+      <View style={[ic.divider, { backgroundColor: C.surfaceContainer }]} />
 
       {/* Quick Actions */}
       <View style={ic.actions}>
         <TouchableOpacity
-          style={[ic.btn, ic.btnDiscard]}
+          style={[ic.btn, { borderWidth: 1, borderColor: C.error + '44' }]}
           onPress={() => onDiscard(item.id)}
           activeOpacity={0.8}
         >
@@ -246,7 +257,7 @@ function IngredientCard({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[ic.btn, ic.btnUse]}
+          style={[ic.btn, { backgroundColor: C.secondaryContainer }]}
           onPress={() => onUse(item.id)}
           activeOpacity={0.8}
         >
@@ -260,19 +271,14 @@ function IngredientCard({
 
 const ic = StyleSheet.create({
   card: {
-    backgroundColor: C.surfaceLowest,
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: C.outlineVariant + '99',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
-  },
-  cardUrgent: {
-    borderColor: C.error + '33',
   },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconWrap: {
@@ -280,58 +286,16 @@ const ic = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
-  name: { fontSize: 15, fontWeight: '700', color: C.onSurface, lineHeight: 20 },
+  name: { fontSize: 15, fontWeight: '700', lineHeight: 20 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' },
-  quantity: { fontSize: 11, color: C.outline, fontWeight: '500' },
-  divider: { height: 1, backgroundColor: C.surfaceContainer, marginVertical: 10 },
+  quantity: { fontSize: 11, fontWeight: '500' },
+  divider: { height: 1, marginVertical: 10 },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   btn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
   },
-  btnDiscard: {
-    borderWidth: 1, borderColor: C.error + '44',
-  },
-  btnUse: {
-    backgroundColor: C.secondaryContainer,
-  },
   btnTxt: { fontSize: 12, fontWeight: '700' },
-});
-
-// ─── Category Filter Chip ─────────────────────────────────────────────────────
-
-function CategoryChip({
-  label, icon, isActive, onPress,
-}: {
-  label: string; icon: MCName; isActive: boolean; onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[ch.chip, isActive && ch.chipActive]}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      <MaterialCommunityIcons
-        name={icon}
-        size={15}
-        color={isActive ? C.onPrimary : C.onSurface}
-      />
-      <Text style={[ch.text, isActive && ch.textActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-const ch = StyleSheet.create({
-  chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12,
-    backgroundColor: C.surfaceLowest,
-    borderWidth: 1, borderColor: C.outlineVariant + '80',
-    marginRight: 8,
-  },
-  chipActive: { backgroundColor: C.primary, borderColor: C.primary },
-  text:       { fontSize: 12, fontWeight: '600', color: C.onSurface },
-  textActive: { color: C.onPrimary },
 });
 
 // ─── Filter Pill ──────────────────────────────────────────────────────────────
@@ -343,18 +307,39 @@ type FilterPillProps = {
   onPress: () => void;
 };
 function FilterPill({ label, isActive, isUrgent, onPress }: FilterPillProps) {
+  const { colors: C, isDark } = useAppTheme();
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
       style={[
         fp.pill,
-        isActive && fp.pillActive,
-        isUrgent && fp.pillUrgent,
+        {
+          backgroundColor: isActive
+            ? C.primary
+            : isUrgent
+              ? (isDark ? '#450a0a' : C.errorContainer + 'CC')
+              : C.surfaceLowest,
+          borderColor: isActive
+            ? C.primary
+            : isUrgent
+              ? (isDark ? '#7f1d1d' : C.error + '4D')
+              : C.outlineVariant,
+        }
       ]}
     >
-      {isUrgent && <View style={fp.urgentDot} />}
-      <Text style={[fp.text, isActive && fp.textActive, isUrgent && fp.textUrgent]}>
+      {isUrgent && <View style={[fp.urgentDot, { backgroundColor: C.error }]} />}
+      <Text style={[
+        fp.text,
+        {
+          color: isActive
+            ? C.onPrimary
+            : isUrgent
+              ? (isDark ? '#fecaca' : C.onErrorContainer)
+              : C.onSurfaceVariant,
+          fontWeight: isUrgent || isActive ? '700' : '600',
+        }
+      ]}>
         {label}
       </Text>
     </TouchableOpacity>
@@ -366,16 +351,10 @@ const fp = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 14, paddingVertical: 6,
     borderRadius: 99, borderWidth: 1,
-    borderColor: C.outlineVariant,
-    backgroundColor: C.surfaceLowest,
     marginRight: 8,
   },
-  pillActive:  { backgroundColor: C.primary, borderColor: C.primary },
-  pillUrgent:  { backgroundColor: C.errorContainer + 'CC', borderColor: C.error + '4D' },
-  urgentDot:   { width: 6, height: 6, borderRadius: 3, backgroundColor: C.error },
-  text:        { fontSize: 12, fontWeight: '600', color: C.onSurfaceVariant },
-  textActive:  { color: C.onPrimary },
-  textUrgent:  { color: C.onErrorContainer, fontWeight: '700' },
+  urgentDot: { width: 6, height: 6, borderRadius: 3 },
+  text:      { fontSize: 12 },
 });
 
 // ─── Storage Tip Card ─────────────────────────────────────────────────────────
@@ -384,25 +363,32 @@ function StorageTipCard({ tip, onNext }: {
   tip: typeof STORAGE_TIPS[number];
   onNext: () => void;
 }) {
+  const { colors: C, isDark } = useAppTheme();
   return (
-    <View style={st.card}>
+    <View style={[
+      st.card,
+      {
+        backgroundColor: isDark ? C.surfaceLowest : C.tertiaryFixed + '66',
+        borderColor: isDark ? C.surfaceContainerHigh : C.tertiaryFixedDim + '99',
+      }
+    ]}>
       <View style={st.iconCol}>
-        <View style={st.iconWrap}>
+        <View style={[st.iconWrap, { backgroundColor: isDark ? C.tertiaryContainer + '66' : C.tertiaryContainer + '33' }]}>
           <MaterialCommunityIcons name={tip.icon as any} size={20} color={C.tertiary} />
         </View>
       </View>
       <View style={{ flex: 1 }}>
         <View style={st.topRow}>
-          <Text style={st.label}>Tips Penyimpanan Hari Ini</Text>
+          <Text style={[st.label, { color: C.tertiary }]}>Tips Penyimpanan Hari Ini</Text>
           <MaterialCommunityIcons name="bookmark-plus-outline" size={18} color={C.tertiary} />
         </View>
-        <Text style={st.text}>{tip.tip}</Text>
+        <Text style={[st.text, { color: C.onSurface }]}>{tip.tip}</Text>
         <View style={st.footer}>
           <TouchableOpacity style={st.nextBtn} onPress={onNext} activeOpacity={0.8}>
-            <Text style={st.nextTxt}>Tips Lainnya</Text>
+            <Text style={[st.nextTxt, { color: C.tertiary }]}>Tips Lainnya</Text>
             <Feather name="chevron-right" size={13} color={C.tertiary} />
           </TouchableOpacity>
-          <Text style={st.category}>Kategori: {tip.category}</Text>
+          <Text style={[st.category, { color: C.onSurfaceVariant }]}>Kategori: {tip.category}</Text>
         </View>
       </View>
     </View>
@@ -412,23 +398,21 @@ function StorageTipCard({ tip, onNext }: {
 const st = StyleSheet.create({
   card: {
     flexDirection: 'row', gap: 12,
-    backgroundColor: C.tertiaryFixed + '66',
     borderRadius: 16, padding: 14,
-    borderWidth: 1, borderColor: C.tertiaryFixedDim + '99',
+    borderWidth: 1,
   },
   iconCol:  { paddingTop: 2 },
   iconWrap: {
     width: 36, height: 36, borderRadius: 12,
-    backgroundColor: C.tertiaryContainer + '33',
     alignItems: 'center', justifyContent: 'center',
   },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  label:  { fontSize: 10, fontWeight: '800', color: C.tertiary, textTransform: 'uppercase', letterSpacing: 0.8 },
-  text:   { fontSize: 13, color: C.onSurface, lineHeight: 20 },
+  label:  { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+  text:   { fontSize: 13, lineHeight: 20 },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
   nextBtn:  { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  nextTxt:  { fontSize: 12, fontWeight: '700', color: C.tertiary },
-  category: { fontSize: 11, color: C.onSurfaceVariant, fontWeight: '500' },
+  nextTxt:  { fontSize: 12, fontWeight: '700' },
+  category: { fontSize: 11, fontWeight: '500' },
 });
 
 // ─── HomeScreen ───────────────────────────────────────────────────────────────
@@ -436,7 +420,9 @@ const st = StyleSheet.create({
 type FilterType = Category | StorageLocation | 'Semua' | 'Kritis';
 
 export default function HomeScreen() {
-  const { data, loading } = useIngredients();
+  const { isDark, colors: C } = useAppTheme();
+  const s = useMemo(() => createStyles(C), [C]);
+  const { data, loading, refreshing, error, isRetrying, retry, refresh } = useIngredients();
   // Perubahan status lokal (Gunakan / Buang) disimpan terpisah dari data server
   const [statusOverrides, setStatusOverrides] = useState<Record<string, IngredientStatus>>({});
   const ingredients = useMemo<Ingredient[]>(
@@ -446,7 +432,6 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('Semua');
   const [tipIndex, setTipIndex] = useState(0);
-  const [sortBy] = useState<'expiry' | 'name'>('expiry');
 
   const active = useMemo(() => ingredients.filter(i => i.status === 'active'), [ingredients]);
 
@@ -514,16 +499,14 @@ export default function HomeScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={C.surface} />
 
       {/* ── Top App Bar ── */}
       <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface }}>
         <View style={s.header}>
           {/* Avatar + Greeting */}
           <View style={s.headerLeft}>
-            
             <View>
-              
               <View style={s.brandRow}>
                 <Text style={s.brandName}>FreshG</Text>
                 <MaterialCommunityIcons name="leaf" size={18} color={C.primaryContainer} />
@@ -546,107 +529,152 @@ export default function HomeScreen() {
         style={{ flex: 1, backgroundColor: C.surface }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.scroll, { paddingBottom: BottomTabInset + 32 }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            colors={[C.primary]}
+            tintColor={C.primary}
+          />
+        }
       >
-        {/* ── SECTION 1: Smart Reminder Banner ── */}
-        {urgentCount > 0 && (
-          <View style={s.reminderCard}>
-            <View style={s.reminderIconWrap}>
-              <MaterialIcons name="warning" size={22} color={C.error} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={s.reminderTopRow}>
-                <Text style={s.reminderChip}>SMART REMINDER</Text>
-                <View style={s.reminderBadge}>
-                  <Text style={s.reminderBadgeText}>Segera Masak</Text>
-                </View>
-              </View>
-              <Text style={s.reminderTitle}>
-                {urgentCount} bahan mendekati masa simpan!
-              </Text>
-              <Text style={s.reminderSub}>
-                {urgentNames} perlu dimasak hari ini agar nutrisinya tetap optimal.
-              </Text>
-              <View style={s.reminderFooter}>
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
-                  activeOpacity={0.8}>
-                  <Text style={s.reminderLink}>Lihat Semua ({urgentCount})</Text>
-                  <MaterialIcons name="arrow-forward" size={14} color={C.error} />
-                </TouchableOpacity>
-                <Text style={s.reminderSave}>Hemat ±Rp 32.000</Text>
-              </View>
-            </View>
+        {/* Banner Error Kompak jika data lama masih tersedia namun refresh gagal */}
+        {error && data && (
+          <View style={{ marginBottom: 10 }}>
+            <ErrorState
+              error={error}
+              onRetry={retry}
+              isRetrying={isRetrying}
+              compact
+            />
           </View>
         )}
 
-        {/* ── SECTION 2: Quick Input & Category Presets ── */}
-        
-
-        {/* ── SECTION 3: Search & Filter ── */}
-        <View style={s.section}>
-          {/* Search bar */}
-          <View style={s.searchWrap}>
-            <Feather name="search" size={18} color={C.outline} />
-            <TextInput
-              style={s.searchInput}
-              placeholder="Cari bahan makanan..."
-              placeholderTextColor={C.outline}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+        {/* Jika terjadi Error Total saat memuat data awal */}
+        {error && !data ? (
+          <View style={[s.section, { paddingVertical: 40 }]}>
+            <ErrorState
+              error={error}
+              onRetry={retry}
+              isRetrying={isRetrying}
             />
-            <TouchableOpacity activeOpacity={0.7}>
-              <MaterialIcons name="tune" size={20} color={C.outline} />
-            </TouchableOpacity>
           </View>
-
-        </View>
-
-        {/* ── SECTION 4: Stok Tersedia ── */}
-        <View style={s.section}>
-          <View style={s.listHeader}>
-            <Text style={s.sectionTitle}>Stok Tersedia</Text>
-            
-          </View>
-
-          <View style={{ gap: 10, marginTop: 10 }}>
-            {loading ? (
-              <View style={s.empty}>
-                <ActivityIndicator size="large" color={C.primary} />
-                <Text style={s.emptySub}>Memuat data bahan...</Text>
+        ) : (
+          <>
+            {/* ── SECTION 1: Smart Reminder Banner ── */}
+            {urgentCount > 0 && (
+              <View style={s.reminderCard}>
+                <View style={s.reminderIconWrap}>
+                  <MaterialIcons name="warning" size={22} color={C.error} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={s.reminderTopRow}>
+                    <Text style={s.reminderChip}>SMART REMINDER</Text>
+                    <View style={s.reminderBadge}>
+                      <Text style={s.reminderBadgeText}>Segera Masak</Text>
+                    </View>
+                  </View>
+                  <Text style={s.reminderTitle}>
+                    {urgentCount} bahan mendekati masa simpan!
+                  </Text>
+                  <Text style={s.reminderSub}>
+                    {urgentNames} perlu dimasak hari ini agar nutrisinya tetap optimal.
+                  </Text>
+                  <View style={s.reminderFooter}>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={s.reminderLink}>Lihat Semua ({urgentCount})</Text>
+                      <MaterialIcons name="arrow-forward" size={14} color={C.error} />
+                    </TouchableOpacity>
+                    <Text style={s.reminderSave}>Hemat ±Rp 32.000</Text>
+                  </View>
+                </View>
               </View>
-            ) : filtered.length === 0 ? (
-              <View style={s.empty}>
-                <MaterialCommunityIcons name="basket-outline" size={52} color={C.outlineVariant} />
-                <Text style={s.emptyTitle}>Tidak ada bahan</Text>
-                <Text style={s.emptySub}>Coba ubah filter atau tambah bahan baru</Text>
-              </View>
-            ) : (
-              filtered.map(item => (
-                <IngredientCard
-                  key={item.id}
-                  item={item}
-                  onUse={handleUse}
-                  onDiscard={handleDiscard}
-                />
-              ))
             )}
-          </View>
-        </View>
 
-        {/* ── SECTION 5: Storage Tips ── */}
-        <View style={s.section}>
-          <StorageTipCard
-            tip={currentTip}
-            onNext={() => setTipIndex((tipIndex + 1) % STORAGE_TIPS.length)}
-          />
-        </View>
+            {/* ── SECTION 3: Search & Filter ── */}
+            <View style={s.section}>
+              {/* Search bar */}
+              <View style={s.searchWrap}>
+                <Feather name="search" size={18} color={C.outline} />
+                <TextInput
+                  style={s.searchInput}
+                  placeholder="Cari bahan makanan..."
+                  placeholderTextColor={C.outline}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                <TouchableOpacity activeOpacity={0.7}>
+                  <MaterialIcons name="tune" size={20} color={C.outline} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Horizontal filter pills */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingTop: 10, paddingBottom: 2 }}
+              >
+                {filterOptions.map(opt => (
+                  <FilterPill
+                    key={opt.value}
+                    label={opt.label}
+                    isActive={activeFilter === opt.value}
+                    isUrgent={opt.value === 'Kritis'}
+                    onPress={() => setActiveFilter(opt.value)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* ── SECTION 4: Stok Tersedia ── */}
+            <View style={s.section}>
+              <View style={s.listHeader}>
+                <Text style={s.sectionTitle}>Stok Tersedia</Text>
+              </View>
+
+              <View style={{ gap: 10, marginTop: 10 }}>
+                {loading && !data ? (
+                  <IngredientListSkeleton count={4} />
+                ) : filtered.length === 0 ? (
+                  <View style={s.empty}>
+                    <MaterialCommunityIcons name="basket-outline" size={52} color={C.outlineVariant} />
+                    <Text style={s.emptyTitle}>Tidak ada bahan</Text>
+                    <Text style={s.emptySub}>Coba ubah filter atau tambah bahan baru</Text>
+                  </View>
+                ) : (
+                  filtered.map(item => (
+                    <IngredientCard
+                      key={item.id}
+                      item={item}
+                      onUse={handleUse}
+                      onDiscard={handleDiscard}
+                    />
+                  ))
+                )}
+              </View>
+            </View>
+
+            {/* ── SECTION 5: Storage Tips ── */}
+            <View style={s.section}>
+              <StorageTipCard
+                tip={currentTip}
+                onNext={() => setTipIndex((tipIndex + 1) % STORAGE_TIPS.length)}
+              />
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
 }
 
+
 // ─── Main Styles ──────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const createStyles = (C: FreshGColors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.surface },
   scroll: { paddingHorizontal: 16, paddingTop: 8 },
 
@@ -764,6 +792,6 @@ const s = StyleSheet.create({
 
   // ── Empty ──
   empty:      { alignItems: 'center', paddingVertical: 48, gap: 8 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: '#374151' },
-  emptySub:   { fontSize: 14, color: '#9ca3af', textAlign: 'center' },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: C.onSurface },
+  emptySub:   { fontSize: 14, color: C.outline, textAlign: 'center' },
 });

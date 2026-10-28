@@ -5,16 +5,7 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-
-// ── Design tokens ─────────────────────────────────────────────────────────────
-
-const C = {
-  secondaryContainer:   '#82f5c1',
-  onSecondaryContainer: '#00714e',
-  surfaceLowest:        '#ffffff',
-  outlineVariant:       '#bbcabf',
-  onSurfaceVariant:     '#3c4a42',
-};
+import { useAppTheme } from '@/context/theme-context';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
@@ -61,23 +52,30 @@ const TABS: TabDef[] = [
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
-// Using `any` for navigation to avoid importing @react-navigation/bottom-tabs
-// just for its complex generic types, which aren't installed in this project.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type TabBarProps = { state: any; navigation: any };
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BottomTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const { colors: C } = useAppTheme();
 
   // Only render routes that appear in our TABS definition (hides 'explore' etc.)
-  const visibleRoutes = (state.routes as Array<{ key: string; name: string }>).filter(
+  const visibleRoutes = (state.routes as { key: string; name: string }[]).filter(
     r => TABS.some(t => t.name === r.name),
   );
 
   return (
-    <View style={[s.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View
+      style={[
+        s.container,
+        {
+          backgroundColor: C.surfaceLowest,
+          borderTopColor: C.outlineVariant,
+          paddingBottom: Math.max(insets.bottom, 8),
+        },
+      ]}
+    >
       {visibleRoutes.map(route => {
         const tabDef  = TABS.find(t => t.name === route.name)!;
         const focused = state.routes[state.index]?.name === route.name;
@@ -99,7 +97,7 @@ export default function BottomTabBar({ state, navigation }: TabBarProps) {
             key={route.key}
             onPress={onPress}
             activeOpacity={0.85}
-            style={[s.tab, focused && s.tabActive]}
+            style={[s.tab, focused && { backgroundColor: C.secondaryContainer }]}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
           >
@@ -119,9 +117,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: C.surfaceLowest,
     borderTopWidth: 1,
-    borderTopColor: C.outlineVariant,
     paddingTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
@@ -137,12 +133,10 @@ const s = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
   },
-  tabActive: {
-    backgroundColor: C.secondaryContainer,
-  },
   label: {
     fontSize: 10,
     fontWeight: '600',
     letterSpacing: 0.1,
-  }
+  },
 });
+

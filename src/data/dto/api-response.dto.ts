@@ -5,4 +5,10 @@ export interface ApiResponse<T> {
   status: 'success' | 'error';
   server_time: string; // ISO-8601
   data: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
 }
+

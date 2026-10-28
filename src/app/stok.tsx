@@ -13,13 +13,15 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTabInset } from '@/constants/theme';
 import { useIngredients } from '@/hooks/use-ingredients';
+import { ErrorState } from '@/components/ui/error-state';
+import { IngredientListSkeleton } from '@/components/ui/loading-skeleton';
 import {
   type Category,
   type Ingredient,
@@ -28,37 +30,8 @@ import {
   getFreshnessPercent,
 } from '@/types/ingredient';
 import { daysSince } from '@/utils/format';
-
-// ─── Design Tokens (translated from Tailwind config) ─────────────────────────
-
-const C = {
-  primary:            '#006c49',
-  primaryContainer:   '#10b981',
-  onPrimary:          '#ffffff',
-  onPrimaryContainer: '#00422b',
-  secondary:          '#006c4a',
-  secondaryContainer: '#82f5c1',
-  onSecondaryContainer: '#00714e',
-  surface:            '#f8f9ff',
-  surfaceContainer:   '#e5eeff',
-  surfaceContainerLow:'#eff4ff',
-  surfaceContainerHigh:'#dce9ff',
-  surfaceContainerHighest:'#d3e4fe',
-  surfaceLowest:      '#ffffff',
-  onSurface:          '#0b1c30',
-  onSurfaceVariant:   '#3c4a42',
-  outlineVariant:     '#bbcabf',
-  outline:            '#6c7a71',
-  error:              '#ba1a1a',
-  errorContainer:     '#ffdad6',
-  onErrorContainer:   '#93000a',
-  tertiary:           '#855300',
-  tertiaryContainer:  '#e29100',
-  tertiaryFixed:      '#ffddb8',
-  tertiaryFixedDim:   '#ffb95f',
-  onTertiaryContainer:'#523200',
-  background:         '#f8f9ff',
-};
+import { useAppTheme } from '@/context/theme-context';
+import type { FreshGColors } from '@/constants/theme-colors';
 
 type MCName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 type MIName = React.ComponentProps<typeof MaterialIcons>['name'];
@@ -83,7 +56,7 @@ function getGroup(daysLeft: number): GroupKey {
   return 'aman';
 }
 
-const GROUPS: Record<GroupKey, {
+function getGroups(C: FreshGColors): Record<GroupKey, {
   title: string;
   markerColor: string;
   titleColor: string;
@@ -100,59 +73,66 @@ const GROUPS: Record<GroupKey, {
   progressIcon: MIName;
   progressColor: string;
   barColor: string;
-}> = {
-  kritis: {
-    title: 'Habis ≤ 2 Hari - Kritis',
-    markerColor: C.error, titleColor: C.error,
-    badgeBg: C.errorContainer, badgeColor: C.onErrorContainer,
-    cardBorder: C.error + '4D',
-    iconBg: C.errorContainer + '66', iconBorder: C.errorContainer, iconColor: C.error,
-    statusLabel: 'Segera Masak', statusBg: C.errorContainer, statusColor: C.onErrorContainer, showStatusDot: true,
-    progressIcon: 'alarm', progressColor: C.error, barColor: C.error,
-  },
-  perhatian: {
-    title: 'Habis 3-4 Hari - Perhatian',
-    markerColor: C.tertiaryContainer, titleColor: C.tertiary,
-    badgeBg: C.tertiaryFixed, badgeColor: C.onTertiaryContainer,
-    cardBorder: C.outlineVariant + '80',
-    iconBg: C.surfaceContainer, iconBorder: C.surfaceContainerHigh, iconColor: C.secondary,
-    statusLabel: 'Gunakan Segera', statusBg: C.tertiaryFixed, statusColor: C.onTertiaryContainer, showStatusDot: false,
-    progressIcon: 'hourglass-empty', progressColor: C.tertiary, barColor: C.tertiaryContainer,
-  },
-  aman: {
-    title: 'Awet ≥ 5 Hari - Aman',
-    markerColor: C.primaryContainer, titleColor: C.primary,
-    badgeBg: C.secondaryContainer, badgeColor: C.onSecondaryContainer,
-    cardBorder: C.outlineVariant + '66',
-    iconBg: C.surfaceContainerLow, iconBorder: C.surfaceContainer, iconColor: C.primary,
-    statusLabel: 'Kondisi Baik', statusBg: C.secondaryContainer, statusColor: C.onSecondaryContainer, showStatusDot: false,
-    progressIcon: 'check-circle', progressColor: C.primary, barColor: C.primaryContainer,
-  },
-};
+}> {
+  return {
+    kritis: {
+      title: 'Habis ≤ 2 Hari - Kritis',
+      markerColor: C.error, titleColor: C.error,
+      badgeBg: C.errorContainer, badgeColor: C.onErrorContainer,
+      cardBorder: C.error + '4D',
+      iconBg: C.errorContainer + '66', iconBorder: C.errorContainer, iconColor: C.error,
+      statusLabel: 'Segera Masak', statusBg: C.errorContainer, statusColor: C.onErrorContainer, showStatusDot: true,
+      progressIcon: 'alarm', progressColor: C.error, barColor: C.error,
+    },
+    perhatian: {
+      title: 'Habis 3-4 Hari - Perhatian',
+      markerColor: C.tertiaryContainer, titleColor: C.tertiary,
+      badgeBg: C.tertiaryFixed, badgeColor: C.onTertiaryContainer,
+      cardBorder: C.outlineVariant + '80',
+      iconBg: C.surfaceContainer, iconBorder: C.surfaceContainerHigh, iconColor: C.secondary,
+      statusLabel: 'Gunakan Segera', statusBg: C.tertiaryFixed, statusColor: C.onTertiaryContainer, showStatusDot: false,
+      progressIcon: 'hourglass-empty', progressColor: C.tertiary, barColor: C.tertiaryContainer,
+    },
+    aman: {
+      title: 'Awet ≥ 5 Hari - Aman',
+      markerColor: C.primaryContainer, titleColor: C.primary,
+      badgeBg: C.secondaryContainer, badgeColor: C.onSecondaryContainer,
+      cardBorder: C.outlineVariant + '66',
+      iconBg: C.surfaceContainerLow, iconBorder: C.surfaceContainer, iconColor: C.primary,
+      statusLabel: 'Kondisi Baik', statusBg: C.secondaryContainer, statusColor: C.onSecondaryContainer, showStatusDot: false,
+      progressIcon: 'check-circle', progressColor: C.primary, barColor: C.primaryContainer,
+    },
+  };
+}
 
 const GROUP_ORDER: GroupKey[] = ['kritis', 'perhatian', 'aman'];
 
-const ZONES: { value: StorageLocation; icon: React.ReactNode; iconActive: React.ReactNode }[] = [
-  {
-    value: 'Kulkas',
-    icon: <MaterialIcons name="kitchen" size={14} color={C.onSurfaceVariant} />,
-    iconActive: <MaterialIcons name="kitchen" size={14} color={C.primary} />,
-  },
-  {
-    value: 'Freezer',
-    icon: <MaterialIcons name="ac-unit" size={14} color={C.onSurfaceVariant} />,
-    iconActive: <MaterialIcons name="ac-unit" size={14} color={C.primary} />,
-  },
-  {
-    value: 'Suhu Ruang',
-    icon: <MaterialCommunityIcons name="storefront-outline" size={14} color={C.onSurfaceVariant} />,
-    iconActive: <MaterialCommunityIcons name="storefront-outline" size={14} color={C.primary} />,
-  },
-];
+function getZones(C: FreshGColors): { value: StorageLocation; icon: React.ReactNode; iconActive: React.ReactNode }[] {
+  return [
+    {
+      value: 'Kulkas',
+      icon: <MaterialIcons name="kitchen" size={14} color={C.onSurfaceVariant} />,
+      iconActive: <MaterialIcons name="kitchen" size={14} color={C.primary} />,
+    },
+    {
+      value: 'Freezer',
+      icon: <MaterialIcons name="ac-unit" size={14} color={C.onSurfaceVariant} />,
+      iconActive: <MaterialIcons name="ac-unit" size={14} color={C.primary} />,
+    },
+    {
+      value: 'Suhu Ruang',
+      icon: <MaterialCommunityIcons name="storefront-outline" size={14} color={C.onSurfaceVariant} />,
+      iconActive: <MaterialCommunityIcons name="storefront-outline" size={14} color={C.primary} />,
+    },
+  ];
+}
 
 // ─── Shared Components ────────────────────────────────────────────────────────
 
 function TopAppBar({ count }: { count: number }) {
+  const { colors: C } = useAppTheme();
+  const appBar = useMemo(() => createAppBarStyles(C), [C]);
+
   return (
     <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface }}>
       <View style={appBar.container}>
@@ -177,7 +157,7 @@ function TopAppBar({ count }: { count: number }) {
   );
 }
 
-const appBar = StyleSheet.create({
+const createAppBarStyles = (C: FreshGColors) => StyleSheet.create({
   container: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 10,
@@ -199,29 +179,51 @@ const appBar = StyleSheet.create({
 // ─── Location Badge ───────────────────────────────────────────────────────────
 
 function LocationBadge({ location }: { location: StorageLocation }) {
+  const { colors: C } = useAppTheme();
   if (location === 'Freezer') {
     return (
-      <View style={[s.itemLocBadge, { backgroundColor: C.surfaceContainerHigh }]}>
+      <View style={[locBadge.badge, { backgroundColor: C.surfaceContainerHigh }]}>
         <MaterialIcons name="ac-unit" size={10} color={C.onSecondaryContainer} />
-        <Text style={[s.itemLocTxt, { color: C.onSecondaryContainer }]}>Freezer</Text>
+        <Text style={[locBadge.txt, { color: C.onSecondaryContainer }]}>Freezer</Text>
       </View>
     );
   }
   if (location === 'Suhu Ruang') {
     return (
-      <View style={[s.itemLocBadge, { backgroundColor: C.tertiaryFixed + '80' }]}>
-        <Text style={[s.itemLocTxt, { color: C.onTertiaryContainer }]}>Suhu Ruang (Pantry)</Text>
+      <View style={[locBadge.badge, { backgroundColor: C.tertiaryFixed + '80' }]}>
+        <Text style={[locBadge.txt, { color: C.onTertiaryContainer }]}>Suhu Ruang (Pantry)</Text>
       </View>
     );
   }
   return (
-    <View style={s.itemLocBadge}><Text style={s.itemLocTxt}>{location}</Text></View>
+    <View style={[locBadge.badge, { backgroundColor: C.surfaceContainerHighest }]}>
+      <Text style={[locBadge.txt, { color: C.primary }]}>{location}</Text>
+    </View>
   );
 }
 
+const locBadge = StyleSheet.create({
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  txt: { fontSize: 11, fontWeight: '700' },
+});
+
 // ─── Stock Item Card ──────────────────────────────────────────────────────────
 
-function StockItemCard({ item, group, isFirst }: { item: Ingredient; group: GroupKey; isFirst: boolean }) {
+function StockItemCard({
+  item,
+  group,
+  isFirst,
+  s,
+  C,
+  GROUPS,
+}: {
+  item: Ingredient;
+  group: GroupKey;
+  isFirst: boolean;
+  s: ReturnType<typeof createStyles>;
+  C: FreshGColors;
+  GROUPS: ReturnType<typeof getGroups>;
+}) {
   const g = GROUPS[group];
   const daysLeft = getDaysUntilExpiry(item.expiryDate);
   const percent = getFreshnessPercent(daysLeft, item.totalDays);
@@ -290,8 +292,13 @@ function StockItemCard({ item, group, isFirst }: { item: Ingredient; group: Grou
 type Zone = 'Semua' | StorageLocation;
 
 export default function StokScreen() {
+  const { isDark, colors: C } = useAppTheme();
+  const s = useMemo(() => createStyles(C), [C]);
+  const GROUPS = useMemo(() => getGroups(C), [C]);
+  const ZONES = useMemo(() => getZones(C), [C]);
+
   const [activeZone, setActiveZone] = useState<Zone>('Semua');
-  const { data, loading } = useIngredients();
+  const { data, loading, refreshing, error, isRetrying, retry, refresh } = useIngredients();
 
   const active = useMemo(() => (data ?? []).filter(i => i.status === 'active'), [data]);
 
@@ -324,13 +331,22 @@ export default function StokScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={C.surface} />
       <TopAppBar count={active.length} />
 
       <ScrollView
         contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 40 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            colors={[C.primary]}
+            tintColor={C.primary}
+          />
+        }
       >
+
         {/* Page Context & Title */}
         <View style={s.pageContext}>
           <Text style={s.pageTitle}>Inventaris Stok Bahan</Text>
@@ -410,10 +426,30 @@ export default function StokScreen() {
           </View>
         </View>
 
+        {/* Compact Error State jika refresh gagal namun data lama masih ada */}
+        {error && data && (
+          <View style={{ marginBottom: 12 }}>
+            <ErrorState
+              error={error}
+              onRetry={retry}
+              isRetrying={isRetrying}
+              compact
+            />
+          </View>
+        )}
+
         {/* Chronological Timeline */}
-        {loading ? (
-          <View style={s.loading}>
-            <ActivityIndicator size="large" color={C.primary} />
+        {error && !data ? (
+          <View style={{ paddingVertical: 36 }}>
+            <ErrorState
+              error={error}
+              onRetry={retry}
+              isRetrying={isRetrying}
+            />
+          </View>
+        ) : loading && !data ? (
+          <View style={{ paddingVertical: 8 }}>
+            <IngredientListSkeleton count={4} />
           </View>
         ) : (
           <View style={s.timelineSection}>
@@ -436,7 +472,15 @@ export default function StokScreen() {
                   </View>
 
                   {items.map((item, idx) => (
-                    <StockItemCard key={item.id} item={item} group={key} isFirst={idx === 0} />
+                    <StockItemCard
+                      key={item.id}
+                      item={item}
+                      group={key}
+                      isFirst={idx === 0}
+                      s={s}
+                      C={C}
+                      GROUPS={GROUPS}
+                    />
                   ))}
                 </View>
               );
@@ -456,7 +500,7 @@ export default function StokScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const createStyles = (C: FreshGColors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.background },
   scrollContent: { paddingHorizontal: 16, paddingTop: 16 },
   loading: { paddingVertical: 40, alignItems: 'center' },

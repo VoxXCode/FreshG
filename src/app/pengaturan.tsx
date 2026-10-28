@@ -2,7 +2,7 @@
  * FreshG – Pengaturan & Akun Screen
  * Faithful React Native translation of the HTML reference design.
  */
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,52 +12,29 @@ import {
   StatusBar,
   Switch,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTabInset } from '@/constants/theme';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { useNetworkStatus } from '@/hooks/use-network';
+import { ErrorState } from '@/components/ui/error-state';
+import { SkeletonBox } from '@/components/ui/loading-skeleton';
 import { formatRupiah } from '@/utils/format';
 import type { UserProfile } from '@/types/user';
-
-// ─── Design Tokens ─────────────────────────────────────────────────────────────
-
-const C = {
-  primary:            '#006c49',
-  primaryContainer:   '#10b981',
-  onPrimary:          '#ffffff',
-  onPrimaryContainer: '#00422b',
-  secondary:          '#006c4a',
-  secondaryContainer: '#82f5c1',
-  onSecondaryContainer: '#00714e',
-  surface:            '#f8f9ff',
-  surfaceContainer:   '#e5eeff',
-  surfaceContainerLow:'#eff4ff',
-  surfaceContainerHigh:'#dce9ff',
-  surfaceContainerHighest:'#d3e4fe',
-  surfaceLowest:      '#ffffff',
-  onSurface:          '#0b1c30',
-  onSurfaceVariant:   '#3c4a42',
-  outlineVariant:     '#bbcabf',
-  outline:            '#6c7a71',
-  error:              '#ba1a1a',
-  errorContainer:     '#ffdad6',
-  onErrorContainer:   '#93000a',
-  tertiary:           '#855300',
-  tertiaryContainer:  '#e29100',
-  tertiaryFixed:      '#ffddb8',
-  tertiaryFixedDim:   '#ffb95f',
-  onTertiaryContainer:'#523200',
-  background:         '#f8f9ff',
-  surfaceBright:      '#f8f9ff',
-};
+import { useAppTheme } from '@/context/theme-context';
+import type { FreshGColors } from '@/constants/theme-colors';
 
 // ─── Top App Bar ──────────────────────────────────────────────────────────────
 
 function TopAppBar({ user }: { user?: UserProfile }) {
+  const { colors: C } = useAppTheme();
+  const appBar = useMemo(() => createAppBarStyles(C), [C]);
+
   return (
-    <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface + 'F2' }}>
+    <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface }}>
       <View style={appBar.container}>
         <View style={appBar.left}>
           <View style={appBar.avatarWrap}>
@@ -81,11 +58,12 @@ function TopAppBar({ user }: { user?: UserProfile }) {
   );
 }
 
-const appBar = StyleSheet.create({
+const createAppBarStyles = (C: FreshGColors) => StyleSheet.create({
   container: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: C.surfaceContainer + '99',
+    borderBottomWidth: 1, borderBottomColor: C.surfaceContainer,
+    backgroundColor: C.surface,
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   avatarWrap: {
@@ -120,35 +98,110 @@ const DEFAULT_ZONES = [
 ];
 
 export default function PengaturanScreen() {
-  const { data: user, loading } = useUserProfile();
+  const { data: user, loading, refreshing, error, isRetrying, retry, refresh } = useUserProfile();
+  const {
+    isSimulatedOffline,
+    isSimulatedServerError,
+    toggleSimulatedOffline,
+    toggleSimulatedServerError,
+  } = useNetworkStatus();
+  const { isDark, setThemeMode, colors: C } = useAppTheme();
+  const s = useMemo(() => createStyles(C), [C]);
 
-  const [isDark, setIsDark] = useState(false);
   const [notif1, setNotif1] = useState(true);
   const [notif2, setNotif2] = useState(true);
   const [notif3, setNotif3] = useState(true);
 
-  if (loading || !user) {
+  if (error && !user) {
     return (
-      <View style={[s.root, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={C.primary} />
+      <View style={s.root}>
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={C.surface} />
+        <TopAppBar />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <ErrorState
+            error={error}
+            onRetry={retry}
+            isRetrying={isRetrying}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  if (loading && !user) {
+    return (
+      <View style={s.root}>
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={C.surface} />
+        <TopAppBar />
+        <View style={[s.scrollContent, { paddingVertical: 24, gap: 16 }]}>
+          <SkeletonBox width={160} height={24} borderRadius={8} />
+          <SkeletonBox width={260} height={14} borderRadius={6} />
+          <View style={[s.card, { padding: 24, gap: 14 }]}>
+            <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+              <SkeletonBox width={64} height={64} borderRadius={32} />
+              <View style={{ flex: 1, gap: 8 }}>
+                <SkeletonBox width="60%" height={18} borderRadius={6} />
+                <SkeletonBox width="40%" height={14} borderRadius={6} />
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+
+  if (!user) {
+    return (
+      <View style={s.root}>
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={C.surface} />
+        <TopAppBar />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <ErrorState
+            error={error ?? new Error('Data profil pengguna tidak tersedia')}
+            onRetry={retry}
+            isRetrying={isRetrying}
+          />
+        </View>
       </View>
     );
   }
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={C.surface} />
       <TopAppBar user={user} />
 
       <ScrollView
         contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 40 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            colors={[C.primary]}
+            tintColor={C.primary}
+          />
+        }
       >
+        {/* Compact error banner jika background refresh gagal */}
+        {error && user && (
+          <View style={{ marginBottom: 12 }}>
+            <ErrorState
+              error={error}
+              onRetry={retry}
+              isRetrying={isRetrying}
+              compact
+            />
+          </View>
+        )}
+
         {/* Header */}
         <View style={s.header}>
           <Text style={s.headerTitle}>Pengaturan & Akun</Text>
           <Text style={s.headerSub}>Kelola preferensi kulkas dan notifikasi pintar</Text>
         </View>
+
 
         {/* Profile Card */}
         <View style={s.card}>
@@ -245,14 +298,14 @@ export default function PengaturanScreen() {
             <View style={s.themeToggle}>
               <TouchableOpacity
                 style={[s.themeBtn, !isDark && s.themeBtnActive]}
-                onPress={() => setIsDark(false)}
+                onPress={() => setThemeMode('light')}
                 activeOpacity={0.8}
               >
                 <Text style={!isDark ? s.themeBtnTxtActive : s.themeBtnTxt}>Terang</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.themeBtn, isDark && s.themeBtnActive]}
-                onPress={() => setIsDark(true)}
+                onPress={() => setThemeMode('dark')}
                 activeOpacity={0.8}
               >
                 <Text style={isDark ? s.themeBtnTxtActive : s.themeBtnTxt}>Gelap</Text>
@@ -260,6 +313,7 @@ export default function PengaturanScreen() {
             </View>
           </View>
         </View>
+
 
         {/* Group 2: Notifikasi & Pengingat Pintar */}
         <View style={s.group}>
@@ -390,6 +444,90 @@ export default function PengaturanScreen() {
           </View>
         </View>
 
+        {/* Group 5: Simulasi Jaringan & Error API (Testing & Dev) */}
+        <View style={s.group}>
+          <View style={s.groupHeaderRow}>
+            <Text style={s.groupTitleNoMargin}>SIMULASI JARINGAN & ERROR API</Text>
+            <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#b45309' }}>MODE PENGEMBANG</Text>
+            </View>
+          </View>
+          <View style={s.cardList}>
+            {/* Simulasi Offline Toggle */}
+            <View style={s.listItem}>
+              <View style={s.listItemContent}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <MaterialCommunityIcons
+                    name="wifi-off"
+                    size={20}
+                    color={isSimulatedOffline ? '#d97706' : C.primary}
+                  />
+                  <Text style={s.itemTitle}>Simulasi Mode Offline</Text>
+                </View>
+                <Text style={s.itemDesc}>
+                  Putus koneksi jaringan untuk menguji tampilan offline banner & retensi cache.
+                </Text>
+              </View>
+              <Switch
+                value={isSimulatedOffline}
+                onValueChange={toggleSimulatedOffline}
+                trackColor={{ false: C.outlineVariant, true: '#f59e0b' }}
+                thumbColor={C.surfaceLowest}
+              />
+            </View>
+
+            {/* Simulasi Server Error 500 Toggle */}
+            <View style={[s.listItem, s.listBorder]}>
+              <View style={s.listItemContent}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <MaterialCommunityIcons
+                    name="server-network-off"
+                    size={20}
+                    color={isSimulatedServerError ? '#dc2626' : C.primary}
+                  />
+                  <Text style={s.itemTitle}>Simulasi Server Error (500)</Text>
+                </View>
+                <Text style={s.itemDesc}>
+                  Paksa panggilan API gagal 500 untuk menguji tampilan Error State & Retry.
+                </Text>
+              </View>
+              <Switch
+                value={isSimulatedServerError}
+                onValueChange={toggleSimulatedServerError}
+                trackColor={{ false: C.outlineVariant, true: '#ef4444' }}
+                thumbColor={C.surfaceLowest}
+              />
+            </View>
+
+            {/* Tombol Test Panggil Ulang */}
+            <TouchableOpacity
+              style={[s.linkItem, s.listBorder]}
+              activeOpacity={0.7}
+              onPress={() => retry()}
+              disabled={isRetrying}
+            >
+              <View style={s.linkLeft}>
+                <View style={s.iconWrap}>
+                  <MaterialCommunityIcons name="refresh" size={20} color={C.primary} />
+                </View>
+                <View style={s.linkText}>
+                  <Text style={s.itemTitle}>Uji Panggilan API Profil</Text>
+                  <Text style={s.itemDesc}>
+                    Panggil ulang API profil untuk melihat respons loading / error / retry.
+                  </Text>
+                </View>
+              </View>
+              {isRetrying ? (
+                <ActivityIndicator size="small" color={C.primary} />
+              ) : (
+                <View style={{ backgroundColor: isDark ? C.primaryContainer : '#e6f4ea', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? C.onPrimaryContainer : C.primary }}>Panggil</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Footer */}
         <View style={s.footer}>
           <TouchableOpacity style={s.btnLogout} activeOpacity={0.8}>
@@ -406,7 +544,7 @@ export default function PengaturanScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const createStyles = (C: FreshGColors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.background },
   scrollContent: { paddingHorizontal: 16, paddingTop: 16, gap: 16 },
 

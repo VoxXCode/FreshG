@@ -3,13 +3,14 @@
  */
 import { api } from '@/data/services/api';
 import { toIngredientList } from '@/data/mappers/ingredient.mapper';
-import { useAsyncData } from './use-async-data';
+import { useAsyncData, type AsyncDataOptions } from './use-async-data';
 
 async function fetchIngredients() {
   const response = await api.getIngredients(); // ApiResponse<IngredientDTO[]>
   return toIngredientList(response.data);     // Ingredient[]
 }
 
-export function useIngredients() {
-  return useAsyncData(fetchIngredients);
+export function useIngredients(options?: AsyncDataOptions) {
+  return useAsyncData(fetchIngredients, options);
 }
+

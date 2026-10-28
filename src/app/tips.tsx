@@ -12,6 +12,7 @@ import {
   StatusBar,
   Dimensions,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -23,46 +24,22 @@ import { formatRupiah } from '@/utils/format';
 import type { Recipe } from '@/types/recipe';
 import type { Guide, GuideTheme } from '@/types/guide';
 import { getDaysUntilExpiry, type StorageLocation, type Ingredient } from '@/types/ingredient';
+import { ErrorState } from '@/components/ui/error-state';
+import { RecipeListSkeleton } from '@/components/ui/loading-skeleton';
+import { useAppTheme } from '@/context/theme-context';
+import type { FreshGColors } from '@/constants/theme-colors';
 
 const { width } = Dimensions.get('window');
 const cardWidth = Math.min(width * 0.84, 340);
 
-// ─── Design Tokens ─────────────────────────────────────────────────────────────
-
-const C = {
-  primary:            '#006c49',
-  primaryContainer:   '#10b981',
-  onPrimary:          '#ffffff',
-  onPrimaryContainer: '#00422b',
-  secondary:          '#006c4a',
-  secondaryContainer: '#82f5c1',
-  onSecondaryContainer: '#00714e',
-  surface:            '#f8f9ff',
-  surfaceContainer:   '#e5eeff',
-  surfaceContainerLow:'#eff4ff',
-  surfaceContainerHigh:'#dce9ff',
-  surfaceContainerHighest:'#d3e4fe',
-  surfaceLowest:      '#ffffff',
-  onSurface:          '#0b1c30',
-  onSurfaceVariant:   '#3c4a42',
-  outlineVariant:     '#bbcabf',
-  outline:            '#6c7a71',
-  error:              '#ba1a1a',
-  errorContainer:     '#ffdad6',
-  onErrorContainer:   '#93000a',
-  tertiary:           '#855300',
-  tertiaryContainer:  '#e29100',
-  tertiaryFixed:      '#ffddb8',
-  tertiaryFixedDim:   '#ffb95f',
-  onTertiaryContainer:'#523200',
-  background:         '#f8f9ff',
-};
-
 // ─── Top App Bar ──────────────────────────────────────────────────────────────
 
 function TopAppBar() {
+  const { colors: C } = useAppTheme();
+  const appBar = useMemo(() => createAppBarStyles(C), [C]);
+
   return (
-    <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface + 'F2' }}>
+    <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface }}>
       <View style={appBar.container}>
         <View style={appBar.left}>
           <View style={appBar.logoWrap}>
@@ -100,10 +77,11 @@ function TopAppBar() {
   );
 }
 
-const appBar = StyleSheet.create({
+const createAppBarStyles = (C: FreshGColors) => StyleSheet.create({
   container: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: C.surface,
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logoWrap: {
@@ -128,20 +106,48 @@ const appBar = StyleSheet.create({
 
 type MIName = React.ComponentProps<typeof MaterialIcons>['name'];
 
-const SOURCE_BADGE: Record<StorageLocation, { bg: string; color: string; icon: MIName; label: string }> = {
-  'Freezer':    { bg: '#EEF2FF', color: '#4338CA', icon: 'ac-unit',  label: 'Bahan dari Freezer' },
-  'Kulkas':     { bg: '#E0F2FE', color: '#0369A1', icon: 'kitchen',  label: 'Sisa Kulkas' },
-  'Suhu Ruang': { bg: '#FEF3C7', color: '#B45309', icon: 'wb-sunny', label: 'Stok Pantry' },
-  'Lemari':     { bg: '#F3F4F6', color: '#4B5563', icon: 'inventory', label: 'Stok Lemari' },
+const getSourceBadge = (location: StorageLocation, isDark: boolean) => {
+  const lightBadges: Record<StorageLocation, { bg: string; color: string; icon: MIName; label: string }> = {
+    'Freezer':    { bg: '#EEF2FF', color: '#4338CA', icon: 'ac-unit',  label: 'Bahan dari Freezer' },
+    'Kulkas':     { bg: '#E0F2FE', color: '#0369A1', icon: 'kitchen',  label: 'Sisa Kulkas' },
+    'Suhu Ruang': { bg: '#FEF3C7', color: '#B45309', icon: 'wb-sunny', label: 'Stok Pantry' },
+    'Lemari':     { bg: '#F3F4F6', color: '#4B5563', icon: 'inventory', label: 'Stok Lemari' },
+  };
+  if (isDark) {
+    const darkBadges: Record<StorageLocation, { bg: string; color: string; icon: MIName; label: string }> = {
+      'Freezer':    { bg: '#1e1b4b', color: '#818cf8', icon: 'ac-unit',  label: 'Bahan dari Freezer' },
+      'Kulkas':     { bg: '#082f49', color: '#38bdf8', icon: 'kitchen',  label: 'Sisa Kulkas' },
+      'Suhu Ruang': { bg: '#451a03', color: '#fbbf24', icon: 'wb-sunny', label: 'Stok Pantry' },
+      'Lemari':     { bg: '#1e293b', color: '#94a3b8', icon: 'inventory', label: 'Stok Lemari' },
+    };
+    return darkBadges[location] || lightBadges[location];
+  }
+  return lightBadges[location];
 };
 
-const GUIDE_THEME: Record<GuideTheme, { iconBg: string; iconColor: string; tagBg: string; tagColor: string }> = {
-  blue:  { iconBg: '#eff6ff', iconColor: '#2563eb', tagBg: '#dbeafe', tagColor: '#1e40af' },
-  amber: { iconBg: '#fffbeb', iconColor: '#b45309', tagBg: '#fef3c7', tagColor: '#78350f' },
+const getGuideTheme = (theme: GuideTheme, isDark: boolean) => {
+  if (isDark) {
+    return theme === 'blue'
+      ? { iconBg: '#1e3a8a', iconColor: '#60a5fa', tagBg: '#172554', tagColor: '#93c5fd' }
+      : { iconBg: '#78350f', iconColor: '#fbbf24', tagBg: '#451a03', tagColor: '#fde68a' };
+  }
+  return theme === 'blue'
+    ? { iconBg: '#eff6ff', iconColor: '#2563eb', tagBg: '#dbeafe', tagColor: '#1e40af' }
+    : { iconBg: '#fffbeb', iconColor: '#b45309', tagBg: '#fef3c7', tagColor: '#78350f' };
 };
 
-function RecipeCard({ recipe }: { recipe: Recipe }) {
-  const badge = SOURCE_BADGE[recipe.sourceLocation];
+function RecipeCard({
+  recipe,
+  s,
+  C,
+  isDark,
+}: {
+  recipe: Recipe;
+  s: ReturnType<typeof createStyles>;
+  C: FreshGColors;
+  isDark: boolean;
+}) {
+  const badge = getSourceBadge(recipe.sourceLocation, isDark);
   const allAvailable = recipe.ingredientsAvailable >= recipe.ingredientsTotal;
   return (
     <View style={s.recipeCard}>
@@ -186,8 +192,18 @@ function RecipeCard({ recipe }: { recipe: Recipe }) {
   );
 }
 
-function GuideCard({ guide }: { guide: Guide }) {
-  const theme = GUIDE_THEME[guide.theme];
+function GuideCard({
+  guide,
+  s,
+  C,
+  isDark,
+}: {
+  guide: Guide;
+  s: ReturnType<typeof createStyles>;
+  C: FreshGColors;
+  isDark: boolean;
+}) {
+  const theme = getGuideTheme(guide.theme, isDark);
   return (
     <View style={s.guideCard}>
       <View style={s.guideTop}>
@@ -225,9 +241,33 @@ function GuideCard({ guide }: { guide: Guide }) {
 }
 
 export default function TipsScreen() {
+  const { isDark, colors: C } = useAppTheme();
+  const s = useMemo(() => createStyles(C), [C]);
+
   const { data: ingredients } = useIngredients();
-  const { data: recipes, loading: recipesLoading } = useRecipes();
-  const { data: guides, loading: guidesLoading } = useGuides();
+  const {
+    data: recipes,
+    loading: recipesLoading,
+    refreshing: recipesRefreshing,
+    error: recipesError,
+    isRetrying: recipesRetrying,
+    retry: recipesRetry,
+    refresh: recipesRefresh,
+  } = useRecipes();
+  const {
+    data: guides,
+    loading: guidesLoading,
+    refreshing: guidesRefreshing,
+    error: guidesError,
+    isRetrying: guidesRetrying,
+    retry: guidesRetry,
+    refresh: guidesRefresh,
+  } = useGuides();
+
+  const isRefreshing = recipesRefreshing || guidesRefreshing;
+  const handleRefresh = async () => {
+    await Promise.all([recipesRefresh(), guidesRefresh()]);
+  };
 
   // Bahan kritis (≤ 2 hari) – dipakai untuk kartu rekomendasi utama
   const critical = useMemo(() => (ingredients ?? [])
@@ -240,13 +280,33 @@ export default function TipsScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={C.surface} />
       <TopAppBar />
 
       <ScrollView
         contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 40 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[C.primary]}
+            tintColor={C.primary}
+          />
+        }
       >
+        {/* Compact error jika salah satu gagal namun data lama masih ada */}
+        {(recipesError || guidesError) && (recipes || guides) && (
+          <View style={{ marginBottom: 4 }}>
+            <ErrorState
+              error={recipesError || guidesError}
+              onRetry={recipesError ? recipesRetry : guidesRetry}
+              isRetrying={recipesRetrying || guidesRetrying}
+              compact
+            />
+          </View>
+        )}
+
         {/* Title Section */}
         <View style={s.titleSection}>
           <View style={s.pulseRow}>
@@ -348,12 +408,22 @@ export default function TipsScreen() {
           </View>
         </View>
 
-        {recipesLoading ? (
-          <ActivityIndicator size="large" color={C.primary} style={{ marginVertical: 24 }} />
+        {recipesError && !recipes ? (
+          <View style={{ paddingVertical: 20 }}>
+            <ErrorState
+              error={recipesError}
+              onRetry={recipesRetry}
+              isRetrying={recipesRetrying}
+            />
+          </View>
+        ) : recipesLoading && !recipes ? (
+          <View style={{ paddingHorizontal: 16 }}>
+            <RecipeListSkeleton count={2} />
+          </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={cardWidth + 16} snapToAlignment="start" decelerationRate="fast" contentContainerStyle={s.carouselContent}>
             {others.map((recipe: Recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
+              <RecipeCard key={recipe.id} recipe={recipe} s={s} C={C} isDark={isDark} />
             ))}
           </ScrollView>
         )}
@@ -367,10 +437,18 @@ export default function TipsScreen() {
         </View>
 
         <View style={s.guideCardList}>
-          {guidesLoading ? (
+          {guidesError && !guides ? (
+            <ErrorState
+              error={guidesError}
+              onRetry={guidesRetry}
+              isRetrying={guidesRetrying}
+            />
+          ) : guidesLoading && !guides ? (
             <ActivityIndicator size="large" color={C.primary} style={{ marginVertical: 24 }} />
           ) : (
-            (guides ?? []).map((guide: Guide) => <GuideCard key={guide.id} guide={guide} />)
+            (guides ?? []).map((guide: Guide) => (
+              <GuideCard key={guide.id} guide={guide} s={s} C={C} isDark={isDark} />
+            ))
           )}
         </View>
 
@@ -397,7 +475,7 @@ export default function TipsScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const createStyles = (C: FreshGColors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.background },
   scrollContent: { paddingHorizontal: 16, paddingTop: 16, gap: 20 },
 

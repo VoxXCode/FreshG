@@ -1,17 +1,22 @@
 import { DarkTheme, DefaultTheme, ThemeProvider, Tabs } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import BottomTabBar from '@/components/bottom-tab-bar';
+import { OfflineBanner } from '@/components/ui/offline-banner';
+import { AppThemeProvider, useAppTheme } from '@/context/theme-context';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+function TabLayoutContent() {
+  const { isDark } = useAppTheme();
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <AnimatedSplashOverlay />
+      <OfflineBanner />
       <Tabs
         screenOptions={{ headerShown: false }}
         tabBar={(props) => <BottomTabBar {...props} />}
@@ -28,3 +33,12 @@ export default function TabLayout() {
     </ThemeProvider>
   );
 }
+
+export default function TabLayout() {
+  return (
+    <AppThemeProvider>
+      <TabLayoutContent />
+    </AppThemeProvider>
+  );
+}
+

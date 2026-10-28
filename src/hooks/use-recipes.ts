@@ -1,7 +1,7 @@
 import { api } from '@/data/services/api';
 import { toRecipeList } from '@/data/mappers/recipe.mapper';
 import { toGuideList } from '@/data/mappers/guide.mapper';
-import { useAsyncData } from './use-async-data';
+import { useAsyncData, type AsyncDataOptions } from './use-async-data';
 
 async function fetchRecipes() {
   const response = await api.getRecipes();
@@ -13,10 +13,11 @@ async function fetchGuides() {
   return toGuideList(response.data);
 }
 
-export function useRecipes() {
-  return useAsyncData(fetchRecipes);
+export function useRecipes(options?: AsyncDataOptions) {
+  return useAsyncData(fetchRecipes, options);
 }
 
-export function useGuides() {
-  return useAsyncData(fetchGuides);
+export function useGuides(options?: AsyncDataOptions) {
+  return useAsyncData(fetchGuides, options);
 }
+

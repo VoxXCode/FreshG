@@ -1,22 +1,24 @@
 /**
- * Mock API – mensimulasikan request HTTP ke server.
- *
- * Mengembalikan data MENTAH dari server (bertipe DTO), belum di-mapping.
- * Jika nanti memakai API sungguhan, cukup ganti isi `request()` dengan
- * `fetch(url).then(r => r.json())` — layer lain tidak perlu berubah.
+ * Mock API – mensimulasikan request HTTP ke server dengan dukungan:
+ * - Penanganan ApiError & Status Code
+ * - Deteksi Offline & Simulasi Offline
+ * - Simulasi Server Error (500)
+ * - Latensi & Request Timeout
  */
+import { Platform } from 'react-native';
 import type { ApiResponse } from '@/data/dto/api-response.dto';
 import type { IngredientDTO } from '@/data/dto/ingredient.dto';
 import type { RecipeDTO } from '@/data/dto/recipe.dto';
 import type { GuideDTO } from '@/data/dto/guide.dto';
 import type { UserProfileDTO } from '@/data/dto/user.dto';
 
+import { ApiError } from '@/types/api-error';
+import { networkSimulator } from '@/data/services/network-simulator';
+
 import ingredientsResponse from '@/data/server/ingredients.json';
 import recipesResponse from '@/data/server/recipes.json';
 import guidesResponse from '@/data/server/guides.json';
 import userProfileResponse from '@/data/server/user-profile.json';
-
-const NETWORK_DELAY_MS = 400;
 
 const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
@@ -40,16 +42,63 @@ function shiftDates(value: unknown, offsetMs: number): unknown {
   return value;
 }
 
-async function request<T>(raw: { server_time: string }): Promise<ApiResponse<T>> {
-  await wait(NETWORK_DELAY_MS);
-  const offset = Date.now() - Date.parse(raw.server_time);
-  const shifted = shiftDates(raw, offset) as ApiResponse<T>;
-  return { ...shifted, server_time: new Date().toISOString() };
+interface RawServerPayload {
+  status?: 'success' | 'error';
+  server_time: string;
+  error?: { code: string; message: string; details?: unknown };
+}
+
+async function request<T>(raw: RawServerPayload, timeoutMs = 8000): Promise<ApiResponse<T>> {
+  // 1. Cek mode offline (simulasi pengembang atau browser offline)
+  if (networkSimulator.isSimulatedOffline) {
+    await wait(200);
+    throw ApiError.offline('Simulasi Mode Offline aktif');
+  }
+
+  if (Platform.OS === 'web' && typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw ApiError.offline('Koneksi internet browser terputus');
+  }
+
+  // 2. Cek simulasi server error 500
+  if (networkSimulator.isSimulatedServerError) {
+    await wait(networkSimulator.simulatedDelayMs);
+    throw ApiError.server(500, 'Simulasi Server Error 500: Terjadi kegagalan komunikasi basis data.');
+  }
+
+  // 3. Eksekusi dengan dukungan timeout
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(ApiError.timeout(timeoutMs));
+    }, timeoutMs);
+  });
+
+  const fetchPromise = (async (): Promise<ApiResponse<T>> => {
+    await wait(networkSimulator.simulatedDelayMs);
+
+    // Cek jika server payload mengindikasikan status error
+    if (raw.status === 'error') {
+      throw new ApiError(raw.error?.message ?? 'Permintaan ditolak oleh server', {
+        code: 'SERVER_ERROR',
+        statusCode: 400,
+        technicalMessage: raw.error?.code ?? 'SERVER_RETURNED_ERROR_STATUS',
+      });
+    }
+
+    const offset = Date.now() - Date.parse(raw.server_time);
+    const shifted = shiftDates(raw, offset) as ApiResponse<T>;
+    return { ...shifted, server_time: new Date().toISOString() };
+  })();
+
+  return Promise.race([fetchPromise, timeoutPromise]);
 }
 
 export const api = {
-  getIngredients: () => request<IngredientDTO[]>(ingredientsResponse),
-  getRecipes:     () => request<RecipeDTO[]>(recipesResponse),
-  getGuides:      () => request<GuideDTO[]>(guidesResponse),
-  getUserProfile: () => request<UserProfileDTO>(userProfileResponse),
+  getIngredients: () => request<IngredientDTO[]>(ingredientsResponse as RawServerPayload),
+  getRecipes:     () => request<RecipeDTO[]>(recipesResponse as RawServerPayload),
+  getGuides:      () => request<GuideDTO[]>(guidesResponse as RawServerPayload),
+  getUserProfile: () => request<UserProfileDTO>(userProfileResponse as RawServerPayload),
+
+  // Utilitas pengujian dan simulasi
+  simulator: networkSimulator,
 };
+
