@@ -67,7 +67,13 @@ type TabBarProps = { state: any; navigation: any };
 export default function BottomTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
 
-  // Only render routes that appear in our TABS definition (hides 'explore' etc.)
+  const currentRouteName = state.routes[state.index]?.name;
+  // Sembunyikan tab bar sepenuhnya saat berada di halaman login
+  if (currentRouteName === 'login') {
+    return null;
+  }
+
+  // Only render routes that appear in our TABS definition (hides 'explore', 'login', etc.)
   const visibleRoutes = (state.routes as { key: string; name: string }[]).filter(
     r => TABS.some(t => t.name === r.name),
   );

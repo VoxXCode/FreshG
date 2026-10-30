@@ -12,13 +12,17 @@ import {
   StatusBar,
   Switch,
   ActivityIndicator,
+  Alert,
+  Platform,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTabInset } from '@/constants/theme';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useIngredients } from '@/hooks/use-ingredients';
+import { useAuth } from '@/hooks/use-auth';
 import { getDaysUntilExpiry, type Ingredient } from '@/types/ingredient';
 import { formatRupiah } from '@/utils/format';
 
@@ -108,6 +112,8 @@ const appBar = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function PengaturanScreen() {
+  const router = useRouter();
+  const { logout } = useAuth();
   const { data: user, loading } = useUserProfile();
   const { data: ingredients } = useIngredients();
 
@@ -118,6 +124,30 @@ export default function PengaturanScreen() {
   const [notif1, setNotif1] = useState(true);
   const [notif2, setNotif2] = useState(true);
   const [notif3, setNotif3] = useState(true);
+
+  // Task 03: Logout dan pembersihan token dari SecureStore
+  const handleLogout = () => {
+    const performLogout = async () => {
+      console.log('[Pengaturan] Memulai proses logout akun...');
+      await logout();
+      router.replace('/login');
+    };
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm('Apakah Anda yakin ingin keluar dari akun? Token autentikasi akan dihapus dari penyimpanan aman.')) {
+        performLogout();
+      }
+    } else {
+      Alert.alert(
+        'Konfirmasi Keluar',
+        'Apakah Anda yakin ingin keluar dari akun? Token autentikasi akan dihapus dari SecureStore.',
+        [
+          { text: 'Batal', style: 'cancel' },
+          { text: 'Keluar', style: 'destructive', onPress: performLogout },
+        ]
+      );
+    }
+  };
 
   if (loading || !user) {
     return (
@@ -346,7 +376,7 @@ export default function PengaturanScreen() {
 
         {/* Footer */}
         <View style={s.footer}>
-          <TouchableOpacity style={s.btnLogout} activeOpacity={0.8}>
+          <TouchableOpacity style={s.btnLogout} activeOpacity={0.8} onPress={handleLogout}>
             <MaterialIcons name="logout" size={20} color={C.error} />
             <Text style={s.btnLogoutTxt}>Keluar Akun</Text>
           </TouchableOpacity>
