@@ -14,9 +14,9 @@ import {
   Animated,
   Platform,
   StatusBar,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import {
   MaterialIcons,
@@ -42,6 +42,8 @@ import {
 } from '@/types/ingredient';
 import { BottomTabInset } from '@/constants/theme';
 import { useIngredients } from '@/hooks/use-ingredients';
+import { ApiStateView } from '@/components/ui/api-state-view';
+import { OfflineBanner } from '@/components/ui/offline-banner';
 
 // ─── Design Tokens (translated from Tailwind config) ─────────────────────────
 
@@ -424,7 +426,8 @@ const st = StyleSheet.create({
 type FilterType = Category | StorageLocation | 'Semua' | 'Kritis';
 
 export default function HomeScreen() {
-  const { data, loading } = useIngredients();
+  const router = useRouter();
+  const { data, loading, isRetrying, error, refetch } = useIngredients();
   // Perubahan status lokal (Gunakan / Buang) disimpan terpisah dari data server
   const [statusOverrides, setStatusOverrides] = useState<Record<string, IngredientStatus>>({});
   const ingredients = useMemo<Ingredient[]>(
@@ -518,17 +521,31 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
-          {/* Notification Bell */}
-          <TouchableOpacity style={s.bellBtn} activeOpacity={0.8}>
-            <MaterialIcons name="notifications" size={24} color={C.onSurface} />
-            {urgentCount > 0 && (
-              <View style={s.bellBadge}>
-                <Text style={s.bellBadgeText}>{urgentCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {/* Header Right Actions */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <TouchableOpacity
+              style={s.bellBtn}
+              onPress={() => router.push('/scan')}
+              activeOpacity={0.8}
+              accessibilityLabel="Scan Barcode Kamera"
+            >
+              <MaterialIcons name="photo-camera" size={22} color={C.primary} />
+            </TouchableOpacity>
+
+            {/* Notification Bell */}
+            <TouchableOpacity style={s.bellBtn} activeOpacity={0.8}>
+              <MaterialIcons name="notifications" size={24} color={C.onSurface} />
+              {urgentCount > 0 && (
+                <View style={s.bellBadge}>
+                  <Text style={s.bellBadgeText}>{urgentCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
+
+      <OfflineBanner onRetryAll={refetch} />
 
       <ScrollView
         style={{ flex: 1, backgroundColor: C.surface }}
@@ -567,27 +584,24 @@ export default function HomeScreen() {
           </View>
 
           <View style={{ gap: 10, marginTop: 10 }}>
-            {loading ? (
-              <View style={s.empty}>
-                <ActivityIndicator size="large" color={C.primary} />
-                <Text style={s.emptySub}>Memuat data bahan...</Text>
-              </View>
-            ) : filtered.length === 0 ? (
-              <View style={s.empty}>
-                <MaterialCommunityIcons name="basket-outline" size={52} color={C.outlineVariant} />
-                <Text style={s.emptyTitle}>Tidak ada bahan</Text>
-                <Text style={s.emptySub}>Coba ubah filter atau tambah bahan baru</Text>
-              </View>
-            ) : (
-              filtered.map(item => (
+            <ApiStateView
+              loading={loading}
+              isRetrying={isRetrying}
+              error={error}
+              isEmpty={!loading && !error && filtered.length === 0}
+              emptyTitle={searchQuery ? 'Bahan Tidak Ditemukan' : 'Belum Ada Bahan Makanan'}
+              emptyMessage={searchQuery ? 'Coba cari dengan kata kunci lain' : 'Kulkas Anda belum memiliki catatan bahan makanan.'}
+              onRetry={refetch}
+            >
+              {filtered.map(item => (
                 <IngredientCard
                   key={item.id}
                   item={item}
                   onUse={handleUse}
                   onDiscard={handleDiscard}
                 />
-              ))
-            )}
+              ))}
+            </ApiStateView>
           </View>
         </View>
 

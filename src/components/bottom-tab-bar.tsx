@@ -68,8 +68,8 @@ export default function BottomTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
 
   const currentRouteName = state.routes[state.index]?.name;
-  // Sembunyikan tab bar sepenuhnya saat berada di halaman login
-  if (currentRouteName === 'login') {
+  // Sembunyikan tab bar saat berada di halaman login atau kamera scan
+  if (currentRouteName === 'login' || currentRouteName === 'scan') {
     return null;
   }
 

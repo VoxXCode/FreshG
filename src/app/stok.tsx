@@ -13,7 +13,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  ActivityIndicator,
   Modal,
   Pressable,
   Dimensions,
@@ -24,8 +23,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { BottomTabInset } from '@/constants/theme';
 import { useIngredients } from '@/hooks/use-ingredients';
+import { ApiStateView } from '@/components/ui/api-state-view';
+import { OfflineBanner } from '@/components/ui/offline-banner';
 import {
   type Category,
   type Ingredient,
@@ -374,8 +376,9 @@ function StockItemCard({
 type Zone = 'Semua' | StorageLocation;
 
 export default function StokScreen() {
+  const router = useRouter();
   const [activeZone, setActiveZone] = useState<Zone>('Semua');
-  const { data, loading } = useIngredients();
+  const { data, loading, isRetrying, error, refetch } = useIngredients();
 
   // Status & Edit Overrides lokal
   const [statusOverrides, setStatusOverrides] = useState<Record<string, IngredientStatus>>({});
@@ -492,6 +495,7 @@ export default function StokScreen() {
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
       <TopAppBar urgentCount={grouped['kritis'].length} />
+      <OfflineBanner onRetryAll={refetch} />
 
       <ScrollView
         contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 40 }]}
@@ -536,12 +540,16 @@ export default function StokScreen() {
 
         </View>
 
-        {/* Chronological Timeline */}
-        {loading ? (
-          <View style={s.loading}>
-            <ActivityIndicator size="large" color={C.primary} />
-          </View>
-        ) : (
+        {/* Chronological Timeline with ApiStateView (Sprint 05) */}
+        <ApiStateView
+          loading={loading}
+          isRetrying={isRetrying}
+          error={error}
+          isEmpty={!loading && !error && visible.length === 0}
+          emptyTitle="Belum Ada Bahan Makanan"
+          emptyMessage="Stok bahan makanan untuk zona ini masih kosong."
+          onRetry={refetch}
+        >
           <View style={s.timelineSection}>
             {/* Timeline track line */}
             <View style={s.timelineTrack} />
@@ -576,7 +584,7 @@ export default function StokScreen() {
               );
             })}
           </View>
-        )}
+        </ApiStateView>
       </ScrollView>
 
       {/* Edit Modal */}
@@ -667,10 +675,14 @@ export default function StokScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Floating Action Button */}
-      <TouchableOpacity style={s.fab} activeOpacity={0.8}>
-        <MaterialIcons name="add" size={20} color={C.onPrimary} />
-        <Text style={s.fabTxt}>Tambah Stok Cepat</Text>
+      {/* Floating Action Button (Sensor Kamera) */}
+      <TouchableOpacity
+        style={s.fab}
+        activeOpacity={0.8}
+        onPress={() => router.push('/scan')}
+      >
+        <MaterialIcons name="photo-camera" size={20} color={C.onPrimary} />
+        <Text style={s.fabTxt}>Pindai / Scan Barcode</Text>
       </TouchableOpacity>
     </View>
   );

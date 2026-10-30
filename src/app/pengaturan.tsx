@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   StatusBar,
   Switch,
-  ActivityIndicator,
   Alert,
   Platform,
 } from 'react-native';
@@ -25,6 +24,10 @@ import { useIngredients } from '@/hooks/use-ingredients';
 import { useAuth } from '@/hooks/use-auth';
 import { getDaysUntilExpiry, type Ingredient } from '@/types/ingredient';
 import { formatRupiah } from '@/utils/format';
+import { LoadingStateView, ErrorStateView } from '@/components/ui/api-state-view';
+import { OfflineBanner } from '@/components/ui/offline-banner';
+import { useNetworkStatus, setSimulatedOffline } from '@/hooks/use-network-status';
+import { setSimulatedError, getSimulatedError } from '@/data/services/api';
 
 // ─── Design Tokens ─────────────────────────────────────────────────────────────
 
@@ -114,7 +117,7 @@ const appBar = StyleSheet.create({
 export default function PengaturanScreen() {
   const router = useRouter();
   const { logout } = useAuth();
-  const { data: user, loading } = useUserProfile();
+  const { data: user, loading, isRetrying, error, refetch } = useUserProfile();
   const { data: ingredients } = useIngredients();
 
   const urgentCount = useMemo(() => (ingredients ?? [])
@@ -124,6 +127,27 @@ export default function PengaturanScreen() {
   const [notif1, setNotif1] = useState(true);
   const [notif2, setNotif2] = useState(true);
   const [notif3, setNotif3] = useState(true);
+
+  // State menu simulasi API & Jaringan (Sprint 05)
+  type SimOption = 'normal' | 'offline' | '500' | '404' | 'timeout' | 'empty';
+  const { simulatedOffline } = useNetworkStatus();
+  const [activeSim, setActiveSim] = useState<SimOption>(() => {
+    if (simulatedOffline) return 'offline';
+    const err = getSimulatedError();
+    if (err !== 'none') return err;
+    return 'normal';
+  });
+
+  const handleSelectSim = (sim: SimOption) => {
+    setActiveSim(sim);
+    if (sim === 'offline') {
+      setSimulatedOffline(true);
+      setSimulatedError('none');
+    } else {
+      setSimulatedOffline(false);
+      setSimulatedError(sim === 'normal' ? 'none' : sim);
+    }
+  };
 
   // Task 03: Logout dan pembersihan token dari SecureStore
   const handleLogout = () => {
@@ -149,18 +173,31 @@ export default function PengaturanScreen() {
     }
   };
 
-  if (loading || !user) {
+  if (loading && !isRetrying && !user) {
     return (
       <View style={[s.root, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={C.primary} />
+        <LoadingStateView />
       </View>
     );
+  }
+
+  if (error && !user) {
+    return (
+      <View style={[s.root, { justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }]}>
+        <ErrorStateView error={error} onRetry={refetch} />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return null;
   }
 
   return (
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
       <TopAppBar urgentCount={urgentCount} />
+      <OfflineBanner onRetryAll={refetch} />
 
       <ScrollView
         contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 40 }]}
@@ -370,6 +407,191 @@ export default function PengaturanScreen() {
                 </View>
               </View>
               <MaterialIcons name="chevron-right" size={18} color={C.outline} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Group: Sensor Perangkat (Week 7) */}
+        <View style={s.group}>
+          <Text style={s.groupTitle}>SENSOR PERANGKAT (WEEK 7)</Text>
+          <View style={s.cardList}>
+            {/* 1. Sensor Gerak (Akselerometer) */}
+            <TouchableOpacity
+              style={s.linkItem}
+              onPress={() => router.push('/sensor')}
+              activeOpacity={0.7}
+            >
+              <View style={s.linkLeft}>
+                <View style={[s.iconWrap, { backgroundColor: C.secondaryContainer }]}>
+                  <MaterialIcons name="vibration" size={20} color={C.primary} />
+                </View>
+                <View style={s.linkText}>
+                  <Text style={s.itemTitle}>Sensor Gerak (Accelerometer)</Text>
+                  <Text style={s.itemDesc} numberOfLines={1}>Nilai real-time X, Y, Z & Kocok HP untuk resep</Text>
+                </View>
+              </View>
+              <View style={s.linkRightRow}>
+                <View style={s.linkBadge}><Text style={s.linkBadgeTxt}>Real-time</Text></View>
+                <MaterialIcons name="chevron-right" size={18} color={C.outline} />
+              </View>
+            </TouchableOpacity>
+
+            {/* 2. Sensor Kamera */}
+            <TouchableOpacity
+              style={[s.linkItem, s.listBorder]}
+              onPress={() => router.push('/scan')}
+              activeOpacity={0.7}
+            >
+              <View style={s.linkLeft}>
+                <View style={[s.iconWrap, { backgroundColor: '#e0f2fe' }]}>
+                  <MaterialIcons name="photo-camera" size={20} color="#0284c7" />
+                </View>
+                <View style={s.linkText}>
+                  <Text style={s.itemTitle}>Sensor Kamera (Pemindai Barcode)</Text>
+                  <Text style={s.itemDesc} numberOfLines={1}>Pindai kemasan & catat bahan makanan</Text>
+                </View>
+              </View>
+              <View style={s.linkRightRow}>
+                <View style={[s.linkBadge, { backgroundColor: '#e0f2fe' }]}><Text style={[s.linkBadgeTxt, { color: '#0284c7' }]}>Camera API</Text></View>
+                <MaterialIcons name="chevron-right" size={18} color={C.outline} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Group: Simulasi (Sprint 05) */}
+        <View style={s.group}>
+          <Text style={s.groupTitle}>SIMULASI</Text>
+          <View style={s.cardList}>
+            <View style={s.listHeader}>
+              <MaterialIcons name="science" size={18} color={C.primary} />
+              <Text style={s.listHeaderTitle}>Simulasi Kondisi API & Jaringan</Text>
+            </View>
+
+            <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 6 }}>
+              <Text style={{ fontSize: 13, color: C.outline, lineHeight: 18 }}>
+                Pilih skenario respon API untuk menguji error handling, timeout, dan offline pada tab Beranda, Stok, atau Tips:
+              </Text>
+            </View>
+
+            {/* Option 1: Normal (200 OK) */}
+            <TouchableOpacity
+              style={[s.linkItem, s.listBorder]}
+              onPress={() => handleSelectSim('normal')}
+              activeOpacity={0.7}
+            >
+              <View style={s.linkLeft}>
+                <View style={[s.iconWrap, activeSim === 'normal' && { backgroundColor: C.secondaryContainer }]}>
+                  <MaterialIcons name="check-circle" size={20} color={C.primary} />
+                </View>
+                <View style={s.linkText}>
+                  <Text style={s.itemTitle}>Normal (200 OK)</Text>
+                  <Text style={s.itemDesc} numberOfLines={1}>Request berhasil dan data termuat normal</Text>
+                </View>
+              </View>
+              {activeSim === 'normal' ? (
+                <View style={s.linkBadge}>
+                  <Text style={s.linkBadgeTxt}>Aktif</Text>
+                </View>
+              ) : (
+                <MaterialIcons name="radio-button-unchecked" size={18} color={C.outline} />
+              )}
+            </TouchableOpacity>
+
+            {/* Option 2: Mode Offline */}
+            <TouchableOpacity
+              style={[s.linkItem, s.listBorder]}
+              onPress={() => handleSelectSim('offline')}
+              activeOpacity={0.7}
+            >
+              <View style={s.linkLeft}>
+                <View style={[s.iconWrap, activeSim === 'offline' && { backgroundColor: '#f3e8ff' }]}>
+                  <MaterialIcons name="wifi-off" size={20} color="#7c3aed" />
+                </View>
+                <View style={s.linkText}>
+                  <Text style={s.itemTitle}>Mode Offline (Tidak Ada Internet)</Text>
+                  <Text style={s.itemDesc} numberOfLines={1}>Uji tampilan tanpa koneksi internet & tombol coba lagi</Text>
+                </View>
+              </View>
+              {activeSim === 'offline' ? (
+                <View style={[s.linkBadge, { backgroundColor: '#f3e8ff' }]}>
+                  <Text style={[s.linkBadgeTxt, { color: '#7c3aed' }]}>Aktif</Text>
+                </View>
+              ) : (
+                <MaterialIcons name="radio-button-unchecked" size={18} color={C.outline} />
+              )}
+            </TouchableOpacity>
+
+            {/* Option 3: Error 500 */}
+            <TouchableOpacity
+              style={[s.linkItem, s.listBorder]}
+              onPress={() => handleSelectSim('500')}
+              activeOpacity={0.7}
+            >
+              <View style={s.linkLeft}>
+                <View style={[s.iconWrap, activeSim === '500' && { backgroundColor: C.errorContainer }]}>
+                  <MaterialIcons name="error-outline" size={20} color={C.error} />
+                </View>
+                <View style={s.linkText}>
+                  <Text style={s.itemTitle}>Error 500 (Server Error)</Text>
+                  <Text style={s.itemDesc} numberOfLines={1}>Uji penanganan status HTTP 5xx dan pesan error</Text>
+                </View>
+              </View>
+              {activeSim === '500' ? (
+                <View style={[s.linkBadge, { backgroundColor: C.errorContainer }]}>
+                  <Text style={[s.linkBadgeTxt, { color: C.error }]}>Aktif</Text>
+                </View>
+              ) : (
+                <MaterialIcons name="radio-button-unchecked" size={18} color={C.outline} />
+              )}
+            </TouchableOpacity>
+
+            {/* Option 4: Timeout */}
+            <TouchableOpacity
+              style={[s.linkItem, s.listBorder]}
+              onPress={() => handleSelectSim('timeout')}
+              activeOpacity={0.7}
+            >
+              <View style={s.linkLeft}>
+                <View style={[s.iconWrap, activeSim === 'timeout' && { backgroundColor: '#fef3c7' }]}>
+                  <MaterialIcons name="access-time" size={20} color="#b45309" />
+                </View>
+                <View style={s.linkText}>
+                  <Text style={s.itemTitle}>Timeout (Server Lambat)</Text>
+                  <Text style={s.itemDesc} numberOfLines={1}>Uji batas waktu request 10 detik & pembatalan otomatis</Text>
+                </View>
+              </View>
+              {activeSim === 'timeout' ? (
+                <View style={[s.linkBadge, { backgroundColor: '#fef3c7' }]}>
+                  <Text style={[s.linkBadgeTxt, { color: '#b45309' }]}>Aktif</Text>
+                </View>
+              ) : (
+                <MaterialIcons name="radio-button-unchecked" size={18} color={C.outline} />
+              )}
+            </TouchableOpacity>
+
+            {/* Option 5: Data Kosong */}
+            <TouchableOpacity
+              style={[s.linkItem, s.listBorder]}
+              onPress={() => handleSelectSim('empty')}
+              activeOpacity={0.7}
+            >
+              <View style={s.linkLeft}>
+                <View style={[s.iconWrap, activeSim === 'empty' && { backgroundColor: C.surfaceContainer }]}>
+                  <MaterialIcons name="inbox" size={20} color={C.outline} />
+                </View>
+                <View style={s.linkText}>
+                  <Text style={s.itemTitle}>Data Kosong (Empty State)</Text>
+                  <Text style={s.itemDesc} numberOfLines={1}>Uji tampilan ketika API mengembalikan array kosong []</Text>
+                </View>
+              </View>
+              {activeSim === 'empty' ? (
+                <View style={[s.linkBadge, { backgroundColor: C.surfaceContainer }]}>
+                  <Text style={[s.linkBadgeTxt, { color: C.onSurface }]}>Aktif</Text>
+                </View>
+              ) : (
+                <MaterialIcons name="radio-button-unchecked" size={18} color={C.outline} />
+              )}
             </TouchableOpacity>
           </View>
         </View>

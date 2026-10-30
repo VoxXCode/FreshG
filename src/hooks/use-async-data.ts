@@ -1,33 +1,88 @@
-import { useEffect, useState } from 'react';
+/**
+ * Async Data Hook – FreshG (Sprint 05: Loading, Error & Retry Mechanism)
+ *
+ * Mengelola siklus hidup request API:
+ * - Loading state & Retrying indicator (Task 02)
+ * - Success state (data tersimpan)
+ * - Error state (menangkap 4xx, 5xx, timeout, dan offline)
+ * - Retry function (refetch) untuk mencoba request kembali
+ */
+import { useEffect, useState, useCallback } from 'react';
+import type { ApiError } from '@/types/api-error';
 
 export interface AsyncState<T> {
   data: T | null;
   loading: boolean;
-  error: Error | null;
+  isRetrying: boolean;
+  error: ApiError | Error | null;
+  refetch: () => Promise<void>;
 }
 
-/**
- * Menjalankan `fetcher` sekali saat mount dan menyimpan hasilnya di state.
- * `fetcher` harus stabil (didefinisikan di luar komponen).
- */
 export function useAsyncData<T>(fetcher: () => Promise<T>): AsyncState<T> {
-  const [state, setState] = useState<AsyncState<T>>({ data: null, loading: true, error: null });
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isRetrying, setIsRetrying] = useState<boolean>(false);
+  const [error, setError] = useState<ApiError | Error | null>(null);
+
+  const execute = useCallback(async (isRetry = false) => {
+    if (isRetry) {
+      setIsRetrying(true);
+    }
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await fetcher();
+      setData(result);
+      setError(null);
+    } catch (e: unknown) {
+      const errObj = e instanceof Error ? e : new Error(String(e));
+      setError(errObj);
+      setData(null);
+    } finally {
+      setLoading(false);
+      setIsRetrying(false);
+    }
+  }, [fetcher]);
 
   useEffect(() => {
     let cancelled = false;
-    fetcher()
-      .then(data => {
-        if (!cancelled) setState({ data, loading: false, error: null });
-      })
-      .catch((e: unknown) => {
+
+    const initialLoad = async () => {
+      try {
+        const result = await fetcher();
         if (!cancelled) {
-          setState({ data: null, loading: false, error: e instanceof Error ? e : new Error(String(e)) });
+          setData(result);
+          setError(null);
         }
-      });
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e : new Error(String(e)));
+          setData(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void initialLoad();
+
     return () => {
       cancelled = true;
     };
   }, [fetcher]);
 
-  return state;
+  const refetch = useCallback(async () => {
+    await execute(true);
+  }, [execute]);
+
+  return {
+    data,
+    loading,
+    isRetrying,
+    error,
+    refetch,
+  };
 }

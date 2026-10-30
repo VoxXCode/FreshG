@@ -11,14 +11,16 @@ import {
   TouchableOpacity,
   StatusBar,
   Dimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTabInset } from '@/constants/theme';
 import { useIngredients } from '@/hooks/use-ingredients';
 import { useRecipes, useGuides } from '@/hooks/use-recipes';
+import { ApiStateView } from '@/components/ui/api-state-view';
+import { OfflineBanner } from '@/components/ui/offline-banner';
 import { formatRupiah } from '@/utils/format';
 import type { Recipe } from '@/types/recipe';
 import type { Guide, GuideTheme } from '@/types/guide';
@@ -210,9 +212,22 @@ function GuideCard({ guide }: { guide: Guide }) {
 }
 
 export default function TipsScreen() {
+  const router = useRouter();
   const { data: ingredients } = useIngredients();
-  const { data: recipes, loading: recipesLoading } = useRecipes();
-  const { data: guides, loading: guidesLoading } = useGuides();
+  const {
+    data: recipes,
+    loading: recipesLoading,
+    isRetrying: recipesRetrying,
+    error: recipesError,
+    refetch: refetchRecipes,
+  } = useRecipes();
+  const {
+    data: guides,
+    loading: guidesLoading,
+    isRetrying: guidesRetrying,
+    error: guidesError,
+    refetch: refetchGuides,
+  } = useGuides();
 
   // Bahan kritis (≤ 2 hari) – dipakai untuk kartu rekomendasi utama
   const critical = useMemo(() => (ingredients ?? [])
@@ -227,6 +242,7 @@ export default function TipsScreen() {
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
       <TopAppBar urgentCount={critical.length} />
+      <OfflineBanner onRetryAll={() => { refetchRecipes(); refetchGuides(); }} />
 
       <ScrollView
         contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 40 }]}
@@ -341,6 +357,27 @@ export default function TipsScreen() {
           </View>
         )}
 
+        {/* Sensor Interaktif: Kocok HP untuk Ide Resep (Week 7) */}
+        <TouchableOpacity
+          style={s.shakeCard}
+          onPress={() => router.push('/sensor')}
+          activeOpacity={0.8}
+        >
+          <View style={s.shakeCardLeft}>
+            <View style={s.shakeCardIcon}>
+              <MaterialCommunityIcons name="vibrate" size={24} color={C.primary} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={s.shakeCardTitle}>Bingung Mau Masak Apa?</Text>
+              <Text style={s.shakeCardSub}>Goyangkan handphone untuk mengacak rekomendasi resep</Text>
+            </View>
+          </View>
+          <View style={s.shakeCardBtn}>
+            <Text style={s.shakeCardBtnTxt}>Kocok</Text>
+            <MaterialIcons name="arrow-forward" size={16} color={C.primary} />
+          </View>
+        </TouchableOpacity>
+
         {/* Horizontal Carousel */}
         <View style={s.sectionHeader}>
           <View style={s.sectionHeaderLeft}>
@@ -349,15 +386,21 @@ export default function TipsScreen() {
           </View>
         </View>
 
-        {recipesLoading ? (
-          <ActivityIndicator size="large" color={C.primary} style={{ marginVertical: 24 }} />
-        ) : (
+        <ApiStateView
+          loading={recipesLoading}
+          isRetrying={recipesRetrying}
+          error={recipesError}
+          isEmpty={!recipesLoading && !recipesError && others.length === 0}
+          emptyTitle="Belum Ada Resep"
+          emptyMessage="Resep yang sesuai dengan stok bahan belum tersedia."
+          onRetry={refetchRecipes}
+        >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={cardWidth + 16} snapToAlignment="start" decelerationRate="fast" contentContainerStyle={s.carouselContent}>
             {others.map((recipe: Recipe) => (
               <RecipeCard key={recipe.id} recipe={recipe} />
             ))}
           </ScrollView>
-        )}
+        </ApiStateView>
 
         {/* Panduan Edukasi */}
         <View style={[s.sectionHeader, { marginTop: 8 }]}>
@@ -368,11 +411,17 @@ export default function TipsScreen() {
         </View>
 
         <View style={s.guideCardList}>
-          {guidesLoading ? (
-            <ActivityIndicator size="large" color={C.primary} style={{ marginVertical: 24 }} />
-          ) : (
-            (guides ?? []).map((guide: Guide) => <GuideCard key={guide.id} guide={guide} />)
-          )}
+          <ApiStateView
+            loading={guidesLoading}
+            isRetrying={guidesRetrying}
+            error={guidesError}
+            isEmpty={!guidesLoading && !guidesError && (guides ?? []).length === 0}
+            emptyTitle="Belum Ada Panduan"
+            emptyMessage="Panduan edukasi bahan belum tersedia saat ini."
+            onRetry={refetchGuides}
+          >
+            {(guides ?? []).map((guide: Guide) => <GuideCard key={guide.id} guide={guide} />)}
+          </ApiStateView>
         </View>
 
         {/* Final Reminder */}
@@ -514,4 +563,62 @@ const s = StyleSheet.create({
   reminderSub: { fontSize: 13, color: C.onSurfaceVariant, marginTop: 4, lineHeight: 20 },
   reminderBtn: { backgroundColor: C.surfaceLowest, borderWidth: 1, borderColor: C.outlineVariant, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
   reminderBtnTxt: { fontSize: 14, fontWeight: '700', color: C.primary },
+
+  // Shake Card (Sensor Interaktif)
+  shakeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    borderRadius: 16,
+    padding: 14,
+    gap: 12,
+    marginVertical: 4,
+  },
+  shakeCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  shakeCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  shakeCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#006c49',
+  },
+  shakeCardSub: {
+    fontSize: 11,
+    color: '#3c4a42',
+    lineHeight: 15,
+  },
+  shakeCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  shakeCardBtnTxt: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#006c49',
+  },
 });
