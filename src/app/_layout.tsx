@@ -55,6 +55,7 @@ function MainNavigation() {
         <Tabs.Screen name="pengaturan"  options={{ title: 'Pengaturan' }} />
 
         {/* Hidden – not shown in tab bar */}
+        <Tabs.Screen name="lokasi"      options={{ href: null }} />
         <Tabs.Screen name="sensor"      options={{ href: null }} />
         <Tabs.Screen name="scan"        options={{ href: null }} />
         <Tabs.Screen name="login"       options={{ href: null }} />

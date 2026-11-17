@@ -8,7 +8,11 @@
     "scheme": "freshg",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "FreshG membutuhkan akses lokasi untuk menampilkan posisi Anda di peta dan mendeteksi area kampus serta rekomendasi terdekat.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "FreshG membutuhkan izin lokasi untuk fitur geofencing dan pemantauan area."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +21,11 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
@@ -33,7 +41,13 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "FreshG membutuhkan akses lokasi untuk menampilkan posisi Anda di peta dan mendeteksi area kampus serta rekomendasi terdekat."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

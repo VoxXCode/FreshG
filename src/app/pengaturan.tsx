@@ -459,6 +459,34 @@ export default function PengaturanScreen() {
           </View>
         </View>
 
+        {/* Group: Location-Based Services (Week 10 - Sprint 08) */}
+        <View style={s.group}>
+          <Text style={s.groupTitle}>LOCATION-BASED SERVICES (WEEK 10)</Text>
+          <View style={s.cardList}>
+            <TouchableOpacity
+              style={s.linkItem}
+              onPress={() => router.push('/lokasi')}
+              activeOpacity={0.7}
+            >
+              <View style={s.linkLeft}>
+                <View style={[s.iconWrap, { backgroundColor: '#e0f2fe' }]}>
+                  <MaterialIcons name="location-on" size={20} color="#0284c7" />
+                </View>
+                <View style={s.linkText}>
+                  <Text style={s.itemTitle}>LBS, Peta & Geofencing (Sprint 08)</Text>
+                  <Text style={s.itemDesc} numberOfLines={1}>GPS, Reverse Geocoding, Radius Kampus UMM & Optimasi Baterai</Text>
+                </View>
+              </View>
+              <View style={s.linkRightRow}>
+                <View style={[s.linkBadge, { backgroundColor: '#e0f2fe' }]}>
+                  <Text style={[s.linkBadgeTxt, { color: '#0284c7' }]}>Sprint 08</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={18} color={C.outline} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Group: Simulasi (Sprint 05) */}
         <View style={s.group}>
           <Text style={s.groupTitle}>SIMULASI</Text>
