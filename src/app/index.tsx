@@ -554,8 +554,28 @@ export default function HomeScreen() {
       >
         
 
-        {/* ── SECTION 2: Quick Input & Category Presets ── */}
-        
+        {/* ── SECTION 2: Shortcut Tugas Praktik Async (Slide 15) ── */}
+        <View style={s.section}>
+          <TouchableOpacity
+            style={s.todoBanner}
+            onPress={() => router.push('/todo')}
+            activeOpacity={0.85}
+          >
+            <View style={s.todoBannerLeft}>
+              <View style={s.todoBadge}>
+                <MaterialIcons name="cloud-sync" size={14} color={C.primary} />
+                <Text style={s.todoBadgeText}></Text>
+              </View>
+              <Text style={s.todoBannerTitle}>Daftar Belanja & Todo Async</Text>
+              <Text style={s.todoBannerSubtitle}>
+                6 Fitur Wajib CRUD Asinkron (GET, POST, PATCH, Spinner, Error Handling)
+              </Text>
+            </View>
+            <View style={s.todoBannerArrow}>
+              <MaterialIcons name="arrow-forward-ios" size={14} color={C.primary} />
+            </View>
+          </TouchableOpacity>
+        </View>
 
         {/* ── SECTION 3: Search & Filter ── */}
         <View style={s.section}>
@@ -739,4 +759,60 @@ const s = StyleSheet.create({
   empty:      { alignItems: 'center', paddingVertical: 48, gap: 8 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: '#374151' },
   emptySub:   { fontSize: 14, color: '#9ca3af', textAlign: 'center' },
+
+  // ── Todo Banner ──
+  todoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: C.surfaceLowest,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: C.primary + '33',
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  todoBannerLeft: {
+    flex: 1,
+    marginRight: 8,
+  },
+  todoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.secondaryContainer + '55',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 4,
+    marginBottom: 6,
+  },
+  todoBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: C.primary,
+  },
+  todoBannerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: C.onSurface,
+  },
+  todoBannerSubtitle: {
+    fontSize: 11,
+    color: C.outline,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  todoBannerArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: C.surfaceContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

@@ -50,6 +50,7 @@ function MainNavigation() {
         {/* Visible tabs */}
         <Tabs.Screen name="index"       options={{ title: 'Beranda' }} />
         <Tabs.Screen name="stok"        options={{ title: 'Stok Bahan' }} />
+        <Tabs.Screen name="todo"        options={{ title: 'Daftar Todo' }} />
         <Tabs.Screen name="tips"        options={{ title: 'Tips & Resep' }} />
         <Tabs.Screen name="pengaturan"  options={{ title: 'Pengaturan' }} />
 

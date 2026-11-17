@@ -11,8 +11,8 @@ import type { UserProfileDTO } from '@/data/dto/user.dto';
 import type { UserProfile } from '@/types/user';
 
 const MEMBERSHIP_LABELS: Record<string, string> = {
-  eco_saver: 'Member Eco-Saver 🌱',
-  eco_hero:  'Member Eco-Hero 🌳',
+  eco_saver: 'Member Eco-Saver',
+  eco_hero:  'Member Eco-Hero',
   basic:     'Member Basic',
 };
 

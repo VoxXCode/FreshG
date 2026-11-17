@@ -43,6 +43,17 @@ const TABS: TabDef[] = [
     ),
   },
   {
+    name: 'todo',
+    label: 'Daftar Todo',
+    renderIcon: (focused, color) => (
+      <MaterialCommunityIcons
+        name={focused ? 'checkbox-marked-circle' : 'checkbox-marked-circle-outline'}
+        size={22}
+        color={color}
+      />
+    ),
+  },
+  {
     name: 'tips',
     label: 'Tips & Resep',
     renderIcon: (focused, color) => (
