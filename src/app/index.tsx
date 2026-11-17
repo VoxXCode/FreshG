@@ -523,6 +523,16 @@ export default function HomeScreen() {
           </View>
           {/* Header Right Actions */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {/* LBS Shortcut (Week 10) */}
+            <TouchableOpacity
+              style={s.bellBtn}
+              onPress={() => router.push('/lokasi')}
+              activeOpacity={0.8}
+              accessibilityLabel="Location-Based Services"
+            >
+              <MaterialIcons name="location-on" size={22} color="#0284c7" />
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={s.bellBtn}
               onPress={() => router.push('/scan')}
@@ -564,7 +574,7 @@ export default function HomeScreen() {
             <View style={s.todoBannerLeft}>
               <View style={s.todoBadge}>
                 <MaterialIcons name="cloud-sync" size={14} color={C.primary} />
-                <Text style={s.todoBadgeText}></Text>
+                <Text style={s.todoBadgeText}>Sprint 05</Text>
               </View>
               <Text style={s.todoBannerTitle}>Daftar Belanja & Todo Async</Text>
               <Text style={s.todoBannerSubtitle}>
@@ -573,6 +583,29 @@ export default function HomeScreen() {
             </View>
             <View style={s.todoBannerArrow}>
               <MaterialIcons name="arrow-forward-ios" size={14} color={C.primary} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── SECTION 2B: Shortcut LBS & Geofencing (Week 10: Sprint 08) ── */}
+        <View style={s.section}>
+          <TouchableOpacity
+            style={[s.todoBanner, { borderColor: '#7dd3fc', backgroundColor: '#f0f9ff' }]}
+            onPress={() => router.push('/lokasi')}
+            activeOpacity={0.85}
+          >
+            <View style={s.todoBannerLeft}>
+              <View style={[s.todoBadge, { backgroundColor: '#e0f2fe' }]}>
+                <MaterialIcons name="location-on" size={14} color="#0284c7" />
+                <Text style={[s.todoBadgeText, { color: '#0284c7' }]}>Week 10 • Sprint 08</Text>
+              </View>
+              <Text style={s.todoBannerTitle}>Location-Based Services (LBS)</Text>
+              <Text style={s.todoBannerSubtitle}>
+                GPS Tracker, Peta Interaktif, Reverse Geocoding & Geofencing Kampus
+              </Text>
+            </View>
+            <View style={[s.todoBannerArrow, { backgroundColor: '#e0f2fe' }]}>
+              <MaterialIcons name="arrow-forward-ios" size={14} color="#0284c7" />
             </View>
           </TouchableOpacity>
         </View>
