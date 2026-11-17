@@ -2,7 +2,7 @@
  * FreshG – Tips & Resep Pintar Screen
  * Faithful React Native translation of the HTML reference design.
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
   StatusBar,
   Dimensions,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -18,7 +20,7 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTabInset } from '@/constants/theme';
 import { useIngredients } from '@/hooks/use-ingredients';
-import { useRecipes, useGuides } from '@/hooks/use-recipes';
+import { useRecipes, useGuides, useRecipeDetail } from '@/hooks/use-recipes';
 import { ApiStateView } from '@/components/ui/api-state-view';
 import { OfflineBanner } from '@/components/ui/offline-banner';
 import { formatRupiah } from '@/utils/format';
@@ -127,7 +129,15 @@ const GUIDE_THEME: Record<GuideTheme, { iconBg: string; iconColor: string; tagBg
   amber: { iconBg: '#fffbeb', iconColor: '#b45309', tagBg: '#fef3c7', tagColor: '#78350f' },
 };
 
-function RecipeCard({ recipe }: { recipe: Recipe }) {
+const RECIPE_CATEGORIES = [
+  { id: 'chicken', label: '🍗 Olahan Ayam' },
+  { id: 'soup',    label: '🥗 Sup & Sayur' },
+  { id: 'beef',    label: '🥩 Daging Sapi' },
+  { id: 'fish',    label: '🐟 Ikan & Seafood' },
+  { id: 'pasta',   label: '🍝 Pasta & Mie' },
+];
+
+function RecipeCard({ recipe, onSelect }: { recipe: Recipe; onSelect?: () => void }) {
   const badge = SOURCE_BADGE[recipe.sourceLocation];
   const allAvailable = recipe.ingredientsAvailable >= recipe.ingredientsTotal;
   return (
@@ -165,7 +175,7 @@ function RecipeCard({ recipe }: { recipe: Recipe }) {
           </View>
         </View>
       </View>
-      <TouchableOpacity style={s.recipeActionBtn} activeOpacity={0.8}>
+      <TouchableOpacity style={s.recipeActionBtn} activeOpacity={0.8} onPress={onSelect}>
         <Text style={s.recipeActionBtnTxt}>Mulai Memasak</Text>
         <MaterialIcons name="arrow-forward" size={16} color={C.primary} />
       </TouchableOpacity>
@@ -213,6 +223,7 @@ function GuideCard({ guide }: { guide: Guide }) {
 
 export default function TipsScreen() {
   const router = useRouter();
+  const [activeCategory, setActiveCategory] = useState<string>('chicken');
   const { data: ingredients } = useIngredients();
   const {
     data: recipes,
@@ -220,7 +231,7 @@ export default function TipsScreen() {
     isRetrying: recipesRetrying,
     error: recipesError,
     refetch: refetchRecipes,
-  } = useRecipes();
+  } = useRecipes(activeCategory);
   const {
     data: guides,
     loading: guidesLoading,
@@ -228,6 +239,20 @@ export default function TipsScreen() {
     error: guidesError,
     refetch: refetchGuides,
   } = useGuides();
+
+  // Detail Modal dari TheMealDB (Langkah Memasak & Takaran Bahan)
+  const {
+    detail: selectedMealDetail,
+    loading: detailLoading,
+    loadDetail,
+    clearDetail,
+  } = useRecipeDetail();
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
+
+  const handleOpenRecipe = (recipe: Recipe) => {
+    loadDetail(recipe.id);
+    setModalVisible(true);
+  };
 
   // Bahan kritis (≤ 2 hari) – dipakai untuk kartu rekomendasi utama
   const critical = useMemo(() => (ingredients ?? [])
@@ -251,28 +276,10 @@ export default function TipsScreen() {
         {/* Title Section */}
         <View style={s.titleSection}>
           <View style={s.pulseRow}>
-            <View style={s.pulseDot} />
-            <Text style={s.pulseTxt}>SMART COOKING & ZERO WASTE HUB</Text>
           </View>
           <Text style={s.pageTitle}>Tips & Inspirasi Masak</Text>
           <Text style={s.pageSub}>Olah bahan sebelum kedaluwarsa & cegah food waste dengan panduan teruji.</Text>
         </View>
-
-        {/* Category Tags */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.scrollTags}>
-          <TouchableOpacity style={s.tagActive} activeOpacity={0.8}>
-            <MaterialIcons name="restaurant-menu" size={14} color={C.onPrimary} />
-            <Text style={s.tagTxtActive}>Rekomendasi Resep</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.tag} activeOpacity={0.8}>
-            <MaterialIcons name="kitchen" size={14} color={C.onSurfaceVariant} />
-            <Text style={s.tagTxt}>Cara Simpan Bahan</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.tag} activeOpacity={0.8}>
-            <MaterialIcons name="inventory" size={14} color={C.onSurfaceVariant} />
-            <Text style={s.tagTxt}>Trik Food Prep</Text>
-          </TouchableOpacity>
-        </ScrollView>
 
         {/* Hero Card */}
         {featured && (
@@ -327,11 +334,22 @@ export default function TipsScreen() {
             </View>
 
             <View style={s.heroBtnRow}>
-              <TouchableOpacity style={s.heroBtnPrimary} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={s.heroBtnPrimary}
+                activeOpacity={0.8}
+                onPress={() => featured && handleOpenRecipe(featured)}
+              >
                 <Text style={s.heroBtnPrimaryTxt}>Lihat Resep & Cara Masak</Text>
                 <MaterialIcons name="arrow-forward" size={18} color={C.onPrimary} />
               </TouchableOpacity>
-              <TouchableOpacity style={s.heroBtnSecondary} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={s.heroBtnSecondary}
+                activeOpacity={0.8}
+                onPress={() => {
+                  const nextIdx = (RECIPE_CATEGORIES.findIndex(c => c.id === activeCategory) + 1) % RECIPE_CATEGORIES.length;
+                  setActiveCategory(RECIPE_CATEGORIES[nextIdx].id);
+                }}
+              >
                 <Text style={s.heroBtnSecondaryTxt}>Ganti Pilihan Bahan</Text>
               </TouchableOpacity>
             </View>
@@ -381,10 +399,37 @@ export default function TipsScreen() {
         {/* Horizontal Carousel */}
         <View style={s.sectionHeader}>
           <View style={s.sectionHeaderLeft}>
-            <Text style={s.sectionTitle}>Resep Hemat & Praktis Berdasarkan Stok</Text>
-            <Text style={s.sectionSub}>Dipersonalisasi sesuai persediaan di Chiller & Freezer Anda</Text>
+            <View style={s.sectionTitleRow}>
+              <Text style={s.sectionTitle}>Resep Masakan Online</Text>
+              <View style={s.liveBadge}>
+              </View>
+            </View>
+            <Text style={s.sectionSub}></Text>
           </View>
         </View>
+
+        {/* Kategori Filter Resep Online */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.categoryFilterScroll}
+        >
+          {RECIPE_CATEGORIES.map((cat) => {
+            const isActive = activeCategory === cat.id;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                style={[s.categoryChip, isActive && s.categoryChipActive]}
+                onPress={() => setActiveCategory(cat.id)}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.categoryChipText, isActive && s.categoryChipTextActive]}>
+                  {cat.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         <ApiStateView
           loading={recipesLoading}
@@ -392,12 +437,16 @@ export default function TipsScreen() {
           error={recipesError}
           isEmpty={!recipesLoading && !recipesError && others.length === 0}
           emptyTitle="Belum Ada Resep"
-          emptyMessage="Resep yang sesuai dengan stok bahan belum tersedia."
+          emptyMessage="Resep yang sesuai dengan kategori ini belum tersedia."
           onRetry={refetchRecipes}
         >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={cardWidth + 16} snapToAlignment="start" decelerationRate="fast" contentContainerStyle={s.carouselContent}>
             {others.map((recipe: Recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                onSelect={() => handleOpenRecipe(recipe)}
+              />
             ))}
           </ScrollView>
         </ApiStateView>
@@ -441,6 +490,87 @@ export default function TipsScreen() {
         </View>
 
       </ScrollView>
+
+      {/* ── Modal Detail Resep Online (TheMealDB) ────────────────────── */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {
+          setModalVisible(false);
+          clearDetail();
+        }}
+      >
+        <View style={s.modalBackdrop}>
+          <View style={s.modalContainer}>
+            <View style={s.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <View style={s.modalBadgeRow}>
+                  <View style={s.liveDot} />
+                  <Text style={s.modalBadgeTxt}>TheMealDB Online REST API</Text>
+                </View>
+                <Text style={s.modalTitle} numberOfLines={1}>
+                  {selectedMealDetail?.strMeal || 'Detail Resep'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={s.modalCloseBtn}
+                onPress={() => {
+                  setModalVisible(false);
+                  clearDetail();
+                }}
+              >
+                <MaterialIcons name="close" size={22} color={C.onSurface} />
+              </TouchableOpacity>
+            </View>
+
+            {detailLoading ? (
+              <View style={s.modalLoadingWrap}>
+                <ActivityIndicator size="large" color={C.primary} />
+                <Text style={s.modalLoadingTxt}>Memuat takaran bahan & langkah memasak...</Text>
+              </View>
+            ) : selectedMealDetail ? (
+              <ScrollView style={s.modalScroll} showsVerticalScrollIndicator={false}>
+                <Image
+                  source={{ uri: selectedMealDetail.strMealThumb }}
+                  style={s.modalHeroImg}
+                  contentFit="cover"
+                />
+                <View style={s.modalBody}>
+                  <View style={s.modalTagRow}>
+                    <View style={s.modalTagPill}>
+                      <MaterialIcons name="restaurant" size={12} color={C.primary} />
+                      <Text style={s.modalTagTxt}>{selectedMealDetail.strCategory}</Text>
+                    </View>
+                    <View style={s.modalTagPill}>
+                      <MaterialIcons name="public" size={12} color={C.primary} />
+                      <Text style={s.modalTagTxt}>{selectedMealDetail.strArea}</Text>
+                    </View>
+                  </View>
+
+                  <Text style={s.modalSectionTitle}>Bahan & Takaran</Text>
+                  <View style={s.modalIngredientsList}>
+                    {selectedMealDetail.ingredients.map((ing, idx) => (
+                      <View key={idx} style={s.modalIngRow}>
+                        <MaterialIcons name="check-circle" size={16} color={C.primary} />
+                        <Text style={s.modalIngMeasure}>{ing.measure}</Text>
+                        <Text style={s.modalIngName}>{ing.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <Text style={[s.modalSectionTitle, { marginTop: 18 }]}>Langkah Memasak</Text>
+                  <Text style={s.modalInstructions}>{selectedMealDetail.strInstructions}</Text>
+                </View>
+              </ScrollView>
+            ) : (
+              <View style={s.modalLoadingWrap}>
+                <Text style={s.modalLoadingTxt}>Detail resep tidak ditemukan.</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -620,5 +750,180 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#006c49',
+  },
+
+  // ── Online API Header & Filter Chips ──
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 4,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16a34a',
+  },
+  liveBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#14532d',
+  },
+  categoryFilterScroll: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
+    gap: 8,
+  },
+  categoryChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: C.surfaceContainer,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  categoryChipActive: {
+    backgroundColor: C.primary,
+    borderColor: C.primary,
+  },
+  categoryChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: C.onSurfaceVariant,
+  },
+  categoryChipTextActive: {
+    color: C.onPrimary,
+    fontWeight: '700',
+  },
+
+  // ── Modal Detail Resep ──
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: C.surfaceContainer,
+  },
+  modalBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 4,
+  },
+  modalBadgeTxt: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#16a34a',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: C.onSurface,
+  },
+  modalCloseBtn: {
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: C.surfaceContainer,
+  },
+  modalLoadingWrap: {
+    padding: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  modalLoadingTxt: {
+    fontSize: 13,
+    color: C.outline,
+    textAlign: 'center',
+  },
+  modalScroll: {
+    flexGrow: 0,
+  },
+  modalHeroImg: {
+    width: '100%',
+    height: 200,
+  },
+  modalBody: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  modalTagRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  modalTagPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e5eeff',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  modalTagTxt: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.primary,
+  },
+  modalSectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: C.onSurface,
+    marginBottom: 10,
+  },
+  modalIngredientsList: {
+    backgroundColor: '#f8f9ff',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+  },
+  modalIngRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalIngMeasure: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: C.onSurface,
+    minWidth: 70,
+  },
+  modalIngName: {
+    fontSize: 13,
+    color: C.onSurfaceVariant,
+    flex: 1,
+  },
+  modalInstructions: {
+    fontSize: 13,
+    color: C.onSurfaceVariant,
+    lineHeight: 22,
+    backgroundColor: '#f8f9ff',
+    padding: 14,
+    borderRadius: 12,
   },
 });

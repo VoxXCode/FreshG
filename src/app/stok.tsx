@@ -459,6 +459,14 @@ export default function StokScreen() {
   };
 
   const handleDelete = (item: Ingredient) => {
+    if (Platform.OS === 'web') {
+      const ok = window.confirm(`Apakah Anda yakin ingin menghapus "${item.name}" dari stok?`);
+      if (ok) {
+        setStatusOverrides(prev => ({ ...prev, [item.id]: 'discarded' }));
+      }
+      return;
+    }
+
     Alert.alert(
       'Hapus Bahan',
       `Apakah Anda yakin ingin menghapus "${item.name}" dari stok?`,
@@ -476,6 +484,14 @@ export default function StokScreen() {
   };
 
   const handleUse = (item: Ingredient) => {
+    if (Platform.OS === 'web') {
+      const ok = window.confirm(`Bahan "${item.name}" sudah digunakan untuk memasak?`);
+      if (ok) {
+        setStatusOverrides(prev => ({ ...prev, [item.id]: 'used' }));
+      }
+      return;
+    }
+
     Alert.alert(
       'Tandai Digunakan',
       `Bahan "${item.name}" sudah digunakan untuk memasak?`,
