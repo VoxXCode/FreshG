@@ -1,14 +1,3 @@
-/**
- * API Service – FreshG
- * (Sprint 04: Secure API & Sprint 05: Error Handling, Timeout, and Offline)
- *
- * Mengimplementasikan:
- * 1. Token-Based Authentication (JWT Bearer Authorization Header)
- * 2. HTTP Status Code validation (2xx Success, 4xx Client Error, 5xx Server Error)
- * 3. Timeout Handling (Pembatalan otomatis jika response melewati batas waktu)
- * 4. Offline Handling (Deteksi tidak ada internet sebelum/saat request)
- * 5. Simulation tools (Untuk mendemonstrasikan skenario 500, 404, Timeout, Offline)
- */
 import type { ApiResponse } from '@/data/dto/api-response.dto';
 import type { IngredientDTO } from '@/data/dto/ingredient.dto';
 import type { RecipeDTO } from '@/data/dto/recipe.dto';
@@ -25,9 +14,8 @@ import guidesResponse from '@/data/server/guides.json';
 import userProfileResponse from '@/data/server/user-profile.json';
 
 const NETWORK_DELAY_MS = 400;
-const DEFAULT_TIMEOUT_MS = 10000; // 10 detik batas waktu tunggu (Slide 6)
+const DEFAULT_TIMEOUT_MS = 10000;
 
-// Konfigurasi simulasi untuk keperluan Demo Pengujian (Slide 9 & 12)
 export type SimulatedErrorType = 'none' | '500' | '404' | 'timeout' | 'empty';
 let activeSimulation: SimulatedErrorType = 'none';
 
@@ -62,9 +50,6 @@ function shiftDates(value: unknown, offsetMs: number): unknown {
   return value;
 }
 
-/**
- * Wrapper request ke API dengan perlindungan Token, Timeout, dan Error Handling
- */
 async function request<T>(
   raw: { server_time: string; data?: unknown },
   endpoint: string,
@@ -73,7 +58,6 @@ async function request<T>(
 ): Promise<ApiResponse<T>> {
   console.log(`[API] [Request] GET /${endpoint}`);
 
-  // 1. Pengecekan Kondisi Offline (Sprint 05: Offline Handling)
   if (getSimulatedOffline()) {
     console.warn(`[API] [Offline] Perangkat offline, request dibatalkan.`);
     throw new ApiError(
@@ -84,14 +68,10 @@ async function request<T>(
     );
   }
 
-  // 2. Timeout Wrapper Promise (Sprint 05: Timeout Handling)
   const executeRequest = async (): Promise<ApiResponse<T>> => {
-    // Simulasi Delay Network
     await wait(NETWORK_DELAY_MS);
 
-    // Cek Simulasi Error untuk Demo
     if (activeSimulation === 'timeout') {
-      // Tunggu melebihi timeout untuk memicu timeout error
       await wait(timeoutMs + 500);
     }
 
@@ -124,7 +104,6 @@ async function request<T>(
       };
     }
 
-    // 3. Pengecekan Autentikasi (Sprint 04: Token Bearer)
     if (requiresAuth) {
       const token = await authStorage.getAccessToken();
 
@@ -147,7 +126,6 @@ async function request<T>(
     return { ...shifted, server_time: new Date().toISOString() };
   };
 
-  // Balapan antara request normal dengan timer timeout
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
@@ -172,9 +150,6 @@ async function request<T>(
 }
 
 export const api = {
-  /**
-   * Endpoint Login
-   */
   login: async (credentials: LoginCredentials): Promise<LoginResponseDTO> => {
     if (getSimulatedOffline()) {
       throw new ApiError(
@@ -220,13 +195,11 @@ export const api = {
     };
   },
 
-  // Protected Endpoints dengan Error Handling & Timeout
   getIngredients: () => request<IngredientDTO[]>(ingredientsResponse, 'ingredients', true),
   getRecipes:     () => request<RecipeDTO[]>(recipesResponse, 'recipes', true),
   getGuides:      () => request<GuideDTO[]>(guidesResponse, 'guides', true),
   getUserProfile: () => request<UserProfileDTO>(userProfileResponse, 'user/profile', true),
 
-  // Kontrol simulasi untuk demo/evaluasi praktikum
   setSimulatedError,
   getSimulatedError,
 };

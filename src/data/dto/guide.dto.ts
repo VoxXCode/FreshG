@@ -1,9 +1,3 @@
-/**
- * DTO – Panduan Penyimpanan
- *
- * Field server yang tidak dipakai (`slug`, `view_count`, `published_at`)
- * tidak dimasukkan.
- */
 export interface GuideDTO {
   id: number;
   category_tag: string;

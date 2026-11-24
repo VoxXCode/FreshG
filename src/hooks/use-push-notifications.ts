@@ -1,8 +1,3 @@
-/**
- * Custom Hook untuk Push Notifications (Week 11 Sprint 09)
- * Mengelola lifecycle registrasi token, listener penerimaan notifikasi, dan respon tap.
- */
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
@@ -24,7 +19,6 @@ export function usePushNotifications() {
 
   const router = useRouter();
 
-  // Helper untuk mencatat log aktivitas notifikasi ke UI
   const addLog = useCallback(
     (
       title: string,
@@ -45,7 +39,6 @@ export function usePushNotifications() {
     []
   );
 
-  // TASK 01: Registrasi Perangkat
   const registerDevice = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -63,7 +56,6 @@ export function usePushNotifications() {
     }
   }, [addLog]);
 
-  // TASK 02: Kirim Notifikasi Contoh (Preset Bahan Kedaluwarsa, Resep, Todo)
   const sendTestNotification = useCallback(
     async (
       preset: 'expiry' | 'recipe' | 'todo' | 'custom',
@@ -94,10 +86,8 @@ export function usePushNotifications() {
 
       addLog(`Mengirim Notifikasi: ${title}`, body, 'scheduled_local', data);
 
-      // 1. Jadwalkan notifikasi lokal untuk pengujian instan ke sistem device
       await notificationService.scheduleLocalNotification(title, body, data, delaySeconds);
 
-      // 2. Jika token resmi ada, kirim juga melalui Expo Push API (Cloud Delivery)
       if (tokenResult?.token && tokenResult.isDevice) {
         void notificationService.sendPushNotification(tokenResult.token, title, body, data);
       }
@@ -105,11 +95,9 @@ export function usePushNotifications() {
     [tokenResult, addLog]
   );
 
-  // TASK 03: Pasang Event Listeners (Slide 14)
   useEffect(() => {
     let isMounted = true;
 
-    // Registrasi asinkron saat pertama kali hook dimuat
     const initRegistration = async () => {
       try {
         const res = await notificationService.registerForPushNotificationsAsync();
@@ -129,7 +117,6 @@ export function usePushNotifications() {
 
     void initRegistration();
 
-    // Listener 1: Menerima notifikasi saat aplikasi berada di FOREGROUND (Slide 9)
     notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
       if (!isMounted) return;
       setLatestNotification(notification);
@@ -138,7 +125,6 @@ export function usePushNotifications() {
       addLog(title || 'Notifikasi Masuk', body || '', 'received_foreground', data as NotificationPayloadData);
     });
 
-    // Listener 2: Menerespons saat notifikasi DITEKAN/DIKLIK pengguna (Deep Linking - Slide 10 & 14)
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
       if (!isMounted) return;
       const { title, body, data } = response.notification.request.content;
@@ -148,7 +134,6 @@ export function usePushNotifications() {
       const targetScreen = notificationService.extractNavigationTarget(response);
       console.log('[NotificationResponse] Navigasi Deep Linking ke:', targetScreen);
 
-      // Eksekusi Deep Linking menggunakan Expo Router
       try {
         router.push(targetScreen as any);
       } catch (err) {

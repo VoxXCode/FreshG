@@ -1,13 +1,3 @@
-/**
- * FreshG – Camera Scanner Screen (Week 7: Sensor Kamera & Barcode Scanner)
- *
- * Mengimplementasikan:
- * 1. Runtime Permission Request kamera perangkat sesuai Slide 5
- * 2. Viewfinder CameraView real-time dengan barcode scanner
- * 3. Deteksi barcode otomatis (EAN13, QR, UPC)
- * 4. Pengambilan foto bahan makanan secara visual
- * 5. Dialog konfirmasi penambahan bahan ke stok kulkas
- */
 import { useState, useRef, useCallback } from 'react';
 import {
   View,
@@ -24,7 +14,6 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'ex
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-// ─── Design Tokens ─────────────────────────────────────────────────────────────
 const C = {
   primary:            '#006c49',
   primaryContainer:   '#10b981',
@@ -36,7 +25,6 @@ const C = {
   error:              '#ba1a1a',
 };
 
-// Database barcode simulasi untuk bahan makanan umum FreshG
 const SAMPLE_BARCODES: Record<string, { name: string; category: string; days: number }> = {
   '8992388123456': { name: 'Susu UHT Full Cream 1L', category: 'Dairy & Telur', days: 7 },
   '8991001100223': { name: 'Beras Pandan Wangi 5kg', category: 'Biji-bijian & Pasta', days: 60 },
@@ -59,7 +47,6 @@ export default function CameraScanScreen() {
     code: string;
   } | null>(null);
 
-  // Penanganan hasil scan barcode
   const handleBarcodeScanned = useCallback((result: BarcodeScanningResult) => {
     if (scanned) return;
     setScanned(true);
@@ -76,7 +63,6 @@ export default function CameraScanScreen() {
     });
   }, [scanned]);
 
-  // Simulasi scan untuk lingkungan Web atau emulator tanpa kamera fisik
   const handleSimulateScan = () => {
     handleBarcodeScanned({
       data: '8992388123456',
@@ -86,7 +72,6 @@ export default function CameraScanScreen() {
     });
   };
 
-  // 1. Loading state saat izin diperiksa
   if (!permission) {
     return (
       <View style={[s.permissionRoot, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -95,7 +80,6 @@ export default function CameraScanScreen() {
     );
   }
 
-  // 2. Layar Permintaan Izin Kamera (Slide 5: Sensor Permissions)
   if (!permission.granted) {
     return (
       <SafeAreaView style={s.permissionRoot}>
@@ -130,12 +114,10 @@ export default function CameraScanScreen() {
     );
   }
 
-  // 3. Viewfinder Kamera Aktif
   return (
     <View style={s.root}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* Komponen Kamera Expo */}
       <CameraView
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
@@ -147,9 +129,7 @@ export default function CameraScanScreen() {
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
       />
 
-      {/* Overlay Frame & Controls */}
       <SafeAreaView style={s.overlay} edges={['top', 'bottom']}>
-        {/* Top Header */}
         <View style={s.topBar}>
           <TouchableOpacity
             style={s.iconCircleBtn}
@@ -187,7 +167,6 @@ export default function CameraScanScreen() {
           </View>
         </View>
 
-        {/* Center Scanner Reticle */}
         <View style={s.scannerCenter}>
           <View style={s.scanFrame}>
             <View style={[s.corner, s.cornerTL]} />
@@ -201,9 +180,7 @@ export default function CameraScanScreen() {
           </Text>
         </View>
 
-        {/* Bottom Actions */}
         <View style={s.bottomBar}>
-          {/* Tombol Simulasi Barcode (Web / Emulators) */}
           <TouchableOpacity
             style={s.simulateScanBtn}
             onPress={handleSimulateScan}
@@ -215,7 +192,6 @@ export default function CameraScanScreen() {
         </View>
       </SafeAreaView>
 
-      {/* Modal Hasil Deteksi Scan */}
       <Modal
         visible={scannedItem !== null}
         transparent
@@ -275,7 +251,6 @@ export default function CameraScanScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root: {
     flex: 1,

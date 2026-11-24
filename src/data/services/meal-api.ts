@@ -1,12 +1,3 @@
-/**
- * TheMealDB Online API Service – FreshG
- * Mengambil data resep makanan nyata dari REST API publik TheMealDB
- * Host: https://www.themealdb.com/api/json/v1/1/
- *
- * 100% Gratis & tanpa API Key (endpoint publik '1')
- * Sesuai prinsip Asynchronous API Request React Native (Week 9 PPT Slide 8 & 10)
- */
-
 import type { Recipe } from '@/types/recipe';
 import type { StorageLocation } from '@/types/ingredient';
 
@@ -111,10 +102,6 @@ async function fetchWithTimeout(url: string, signal?: AbortSignal): Promise<Resp
 }
 
 export const mealApi = {
-  /**
-   * Mengambil daftar resep online berdasarkan pencarian nama atau bahan
-   * Default query 'soup' atau 'chicken' untuk menu segar bernutrisi
-   */
   searchRecipes: async (query: string = 'soup', signal?: AbortSignal): Promise<Recipe[]> => {
     const cleanQuery = query.trim() || 'soup';
     console.log(`[TheMealDB] [GET] search.php?s=${cleanQuery}`);
@@ -132,9 +119,6 @@ export const mealApi = {
     return data.meals.map(toRecipeFromMeal);
   },
 
-  /**
-   * Mengambil detail resep lengkap (termasuk takaran bahan dan langkah memasak)
-   */
   getRecipeDetail: async (idMeal: string, signal?: AbortSignal): Promise<MealDetail | null> => {
     console.log(`[TheMealDB] [GET] lookup.php?i=${idMeal}`);
 

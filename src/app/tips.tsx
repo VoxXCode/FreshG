@@ -1,7 +1,3 @@
-/**
- * FreshG – Tips & Resep Pintar Screen
- * Faithful React Native translation of the HTML reference design.
- */
 import { useMemo, useState } from 'react';
 import {
   View,
@@ -31,8 +27,6 @@ import { getDaysUntilExpiry, type StorageLocation, type Ingredient } from '@/typ
 const { width } = Dimensions.get('window');
 const cardWidth = Math.min(width * 0.84, 340);
 
-// ─── Design Tokens ─────────────────────────────────────────────────────────────
-
 const C = {
   primary:            '#006c49',
   primaryContainer:   '#10b981',
@@ -61,8 +55,6 @@ const C = {
   onTertiaryContainer:'#523200',
   background:         '#f8f9ff',
 };
-
-// ─── Top App Bar ──────────────────────────────────────────────────────────────
 
 function TopAppBar({ urgentCount = 0 }: { urgentCount?: number }) {
   return (
@@ -112,8 +104,6 @@ const appBar = StyleSheet.create({
   },
   bellBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
 });
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 type MIName = React.ComponentProps<typeof MaterialIcons>['name'];
 
@@ -240,7 +230,6 @@ export default function TipsScreen() {
     refetch: refetchGuides,
   } = useGuides();
 
-  // Detail Modal dari TheMealDB (Langkah Memasak & Takaran Bahan)
   const {
     detail: selectedMealDetail,
     loading: detailLoading,
@@ -254,7 +243,6 @@ export default function TipsScreen() {
     setModalVisible(true);
   };
 
-  // Bahan kritis (≤ 2 hari) – dipakai untuk kartu rekomendasi utama
   const critical = useMemo(() => (ingredients ?? [])
     .filter((i: Ingredient) => i.status === 'active' && getDaysUntilExpiry(i.expiryDate) <= 2)
     .sort((a: Ingredient, b: Ingredient) => a.expiryDate.getTime() - b.expiryDate.getTime()), [ingredients]);
@@ -273,7 +261,6 @@ export default function TipsScreen() {
         contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 40 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Title Section */}
         <View style={s.titleSection}>
           <View style={s.pulseRow}>
           </View>
@@ -281,10 +268,8 @@ export default function TipsScreen() {
           <Text style={s.pageSub}>Olah bahan sebelum kedaluwarsa & cegah food waste dengan panduan teruji.</Text>
         </View>
 
-        {/* Hero Card */}
         {featured && (
           <View style={[s.heroCard, { backgroundColor: C.primary }]}>
-            {/* Decorative Glows */}
             <View style={s.glow1} />
             <View style={s.glow2} />
 
@@ -375,7 +360,6 @@ export default function TipsScreen() {
           </View>
         )}
 
-        {/* Sensor Interaktif: Kocok HP untuk Ide Resep (Week 7) */}
         <TouchableOpacity
           style={s.shakeCard}
           onPress={() => router.push('/sensor')}
@@ -396,7 +380,6 @@ export default function TipsScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* Horizontal Carousel */}
         <View style={s.sectionHeader}>
           <View style={s.sectionHeaderLeft}>
             <View style={s.sectionTitleRow}>
@@ -408,7 +391,6 @@ export default function TipsScreen() {
           </View>
         </View>
 
-        {/* Kategori Filter Resep Online */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -451,7 +433,6 @@ export default function TipsScreen() {
           </ScrollView>
         </ApiStateView>
 
-        {/* Panduan Edukasi */}
         <View style={[s.sectionHeader, { marginTop: 8 }]}>
           <View style={s.sectionHeaderLeft}>
             <Text style={s.sectionTitle}>Panduan Edukasi & Storage Tips</Text>
@@ -473,7 +454,6 @@ export default function TipsScreen() {
           </ApiStateView>
         </View>
 
-        {/* Final Reminder */}
         <View style={s.reminderCard}>
           <View style={s.reminderLeft}>
             <View style={s.reminderIconWrap}>
@@ -491,7 +471,6 @@ export default function TipsScreen() {
 
       </ScrollView>
 
-      {/* ── Modal Detail Resep Online (TheMealDB) ────────────────────── */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -575,28 +554,23 @@ export default function TipsScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.background },
   scrollContent: { paddingHorizontal: 16, paddingTop: 16, gap: 20 },
 
-  // Title
   titleSection: { gap: 4 },
   pulseRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.primaryContainer }, // Using static instead of pulse animation for simplicity
+  pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.primaryContainer },
   pulseTxt: { fontSize: 11, fontWeight: '700', color: C.primary, letterSpacing: 0.5 },
   pageTitle: { fontSize: 24, fontWeight: '800', color: C.onSurface, letterSpacing: -0.2 },
   pageSub: { fontSize: 14, color: C.onSurfaceVariant, lineHeight: 22 },
 
-  // Tags
   scrollTags: { gap: 8, paddingVertical: 4 },
   tagActive: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.primaryContainer, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2, elevation: 2 },
   tagTxtActive: { fontSize: 13, fontWeight: '700', color: C.onPrimary },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surfaceLowest, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: C.outlineVariant + '80' },
   tagTxt: { fontSize: 13, fontWeight: '600', color: C.onSurfaceVariant },
 
-  // Hero Card
   heroCard: { borderRadius: 16, padding: 16, paddingBottom: 20, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4 },
   glow1: { position: 'absolute', right: -64, top: -64, width: 288, height: 288, borderRadius: 144, backgroundColor: C.primaryContainer + '40' },
   glow2: { position: 'absolute', left: 100, bottom: -48, width: 256, height: 256, borderRadius: 128, backgroundColor: C.secondaryContainer + '26' },
@@ -629,7 +603,6 @@ const s = StyleSheet.create({
   heroOverlayTxtDark: { fontSize: 11, fontWeight: '800', color: C.onSurface },
   heroOverlayTxtLight: { fontSize: 10, fontWeight: '500', color: C.outline },
 
-  // Sections
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   sectionHeaderLeft: { flex: 1, paddingRight: 16 },
   sectionTitle: { fontSize: 20, fontWeight: '800', color: C.onSurface, letterSpacing: -0.2 },
@@ -661,7 +634,6 @@ const s = StyleSheet.create({
   recipeActionBtn: { marginHorizontal: 16, marginBottom: 16, backgroundColor: C.surfaceContainer, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12 },
   recipeActionBtnTxt: { fontSize: 14, fontWeight: '700', color: C.primary },
 
-  // Guide List
   guideCardList: { gap: 16 },
   guideCard: { backgroundColor: C.surfaceLowest, borderRadius: 16, borderWidth: 1, borderColor: C.outlineVariant + '66', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1, padding: 20 },
   guideTop: {},
@@ -684,7 +656,6 @@ const s = StyleSheet.create({
   guideActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   guideActionBtnTxt: { fontSize: 14, fontWeight: '700', color: C.primary },
 
-  // Reminder
   reminderCard: { flexDirection: 'column', backgroundColor: C.surfaceContainerLow, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: C.outlineVariant + '4D', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1, gap: 16 },
   reminderLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   reminderIconWrap: { width: 48, height: 48, borderRadius: 16, backgroundColor: C.secondaryContainer, alignItems: 'center', justifyContent: 'center' },
@@ -694,7 +665,6 @@ const s = StyleSheet.create({
   reminderBtn: { backgroundColor: C.surfaceLowest, borderWidth: 1, borderColor: C.outlineVariant, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
   reminderBtnTxt: { fontSize: 14, fontWeight: '700', color: C.primary },
 
-  // Shake Card (Sensor Interaktif)
   shakeCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -752,7 +722,6 @@ const s = StyleSheet.create({
     color: '#006c49',
   },
 
-  // ── Online API Header & Filter Chips ──
   sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -806,7 +775,6 @@ const s = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // ── Modal Detail Resep ──
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

@@ -1,6 +1,3 @@
-/**
- * Types & DTO – Autentikasi & Manajemen Sesi (Week 5: Sprint 04)
- */
 import type { UserProfileDTO } from '@/data/dto/user.dto';
 import type { UserProfile } from '@/types/user';
 

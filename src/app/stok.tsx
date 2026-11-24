@@ -1,11 +1,4 @@
-/**
- * FreshG – Stok Bahan Screen
- * Faithful React Native translation of the HTML reference design.
- *
- * Data bahan diambil lewat useIngredients():
- * src/data/server/ingredients.json → IngredientDTO → toIngredient() → Ingredient
- */
-import { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,14 +8,13 @@ import {
   StatusBar,
   Modal,
   Pressable,
-  Dimensions,
   Alert,
   TextInput,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BottomTabInset } from '@/constants/theme';
 import { useIngredients } from '@/hooks/use-ingredients';
@@ -36,355 +28,105 @@ import {
   getDaysUntilExpiry,
   getFreshnessPercent,
 } from '@/types/ingredient';
-import { daysSince } from '@/utils/format';
 
-// ─── Design Tokens (translated from Tailwind config) ─────────────────────────
-
-const C = {
-  primary:            '#006c49',
-  primaryContainer:   '#10b981',
-  onPrimary:          '#ffffff',
-  onPrimaryContainer: '#00422b',
-  secondary:          '#006c4a',
-  secondaryContainer: '#82f5c1',
-  onSecondaryContainer: '#00714e',
-  surface:            '#f8f9ff',
-  surfaceContainer:   '#e5eeff',
-  surfaceContainerLow:'#eff4ff',
-  surfaceContainerHigh:'#dce9ff',
-  surfaceContainerHighest:'#d3e4fe',
-  surfaceLowest:      '#ffffff',
-  onSurface:          '#0b1c30',
-  onSurfaceVariant:   '#3c4a42',
-  outlineVariant:     '#bbcabf',
-  outline:            '#6c7a71',
-  error:              '#ba1a1a',
-  errorContainer:     '#ffdad6',
-  onErrorContainer:   '#93000a',
-  tertiary:           '#855300',
-  tertiaryContainer:  '#e29100',
-  tertiaryFixed:      '#ffddb8',
-  tertiaryFixedDim:   '#ffb95f',
-  onTertiaryContainer:'#523200',
-  background:         '#f8f9ff',
-};
-
-type MCName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-type MIName = React.ComponentProps<typeof MaterialIcons>['name'];
-
-const CATEGORY_ICON: Record<Category, MCName> = {
-  'Sayuran':         'sprout',
-  'Buah-buahan':     'fruit-grapes',
-  'Bumbu Dapur':     'chili-mild',
-  'Daging & Olahan': 'food-steak',
-  'Susu & Telur':    'egg',
-  'Herbal':          'leaf',
-  'Kering':          'grain',
-};
-
-// ─── Timeline group config ────────────────────────────────────────────────────
-
-type GroupKey = 'kritis' | 'perhatian' | 'aman';
-
-function getGroup(daysLeft: number): GroupKey {
-  if (daysLeft <= 2) return 'kritis';
-  if (daysLeft <= 4) return 'perhatian';
-  return 'aman';
+interface FilterTab {
+  id: string;
+  label: string;
+  type: 'all' | 'category' | 'location' | 'status';
 }
 
-const GROUPS: Record<GroupKey, {
-  title: string;
-  markerColor: string;
-  titleColor: string;
-  badgeBg: string;
-  badgeColor: string;
-  cardBorder: string;
-  iconBg: string;
-  iconBorder: string;
-  iconColor: string;
-  statusLabel: string;
-  statusBg: string;
-  statusColor: string;
-  showStatusDot: boolean;
-  progressIcon: MIName;
-  progressColor: string;
-  barColor: string;
-}> = {
-  kritis: {
-    title: 'Habis ≤ 2 Hari - Kritis',
-    markerColor: C.error, titleColor: C.error,
-    badgeBg: C.errorContainer, badgeColor: C.onErrorContainer,
-    cardBorder: C.outlineVariant + '80',
-    iconBg: C.errorContainer + '66', iconBorder: C.errorContainer, iconColor: C.error,
-    statusLabel: 'Segera Masak', statusBg: C.errorContainer, statusColor: C.onErrorContainer, showStatusDot: true,
-    progressIcon: 'alarm', progressColor: C.error, barColor: C.error,
-  },
-  perhatian: {
-    title: 'Habis 3-4 Hari - Perhatian',
-    markerColor: C.tertiaryContainer, titleColor: C.tertiary,
-    badgeBg: C.tertiaryFixed, badgeColor: C.onTertiaryContainer,
-    cardBorder: C.outlineVariant + '80',
-    iconBg: C.surfaceContainer, iconBorder: C.surfaceContainerHigh, iconColor: C.secondary,
-    statusLabel: 'Gunakan Segera', statusBg: C.tertiaryFixed, statusColor: C.onTertiaryContainer, showStatusDot: false,
-    progressIcon: 'hourglass-empty', progressColor: C.tertiary, barColor: C.tertiaryContainer,
-  },
-  aman: {
-    title: 'Awet ≥ 5 Hari - Aman',
-    markerColor: C.primaryContainer, titleColor: C.primary,
-    badgeBg: C.secondaryContainer, badgeColor: C.onSecondaryContainer,
-    cardBorder: C.outlineVariant + '66',
-    iconBg: C.surfaceContainerLow, iconBorder: C.surfaceContainer, iconColor: C.primary,
-    statusLabel: 'Kondisi Baik', statusBg: C.secondaryContainer, statusColor: C.onSecondaryContainer, showStatusDot: false,
-    progressIcon: 'check-circle', progressColor: C.primary, barColor: C.primaryContainer,
-  },
-};
-
-const GROUP_ORDER: GroupKey[] = ['kritis', 'perhatian', 'aman'];
-
-const ZONES: { value: StorageLocation; icon: React.ReactNode; iconActive: React.ReactNode }[] = [
-  {
-    value: 'Kulkas',
-    icon: <MaterialIcons name="kitchen" size={14} color={C.onSurfaceVariant} />,
-    iconActive: <MaterialIcons name="kitchen" size={14} color={C.primary} />,
-  },
-  {
-    value: 'Freezer',
-    icon: <MaterialIcons name="ac-unit" size={14} color={C.onSurfaceVariant} />,
-    iconActive: <MaterialIcons name="ac-unit" size={14} color={C.primary} />,
-  },
-  {
-    value: 'Suhu Ruang',
-    icon: <MaterialCommunityIcons name="storefront-outline" size={14} color={C.onSurfaceVariant} />,
-    iconActive: <MaterialCommunityIcons name="storefront-outline" size={14} color={C.primary} />,
-  },
+const FILTER_TABS: FilterTab[] = [
+  { id: 'all', label: 'Semua', type: 'all' },
+  { id: 'Sayuran', label: 'Sayuran', type: 'category' },
+  { id: 'Daging & Olahan', label: 'Daging', type: 'category' },
+  { id: 'Buah-buahan', label: 'Buah', type: 'category' },
+  { id: 'Susu & Telur', label: 'Susu & Telur', type: 'category' },
+  { id: 'Bumbu Dapur', label: 'Bumbu', type: 'category' },
+  { id: 'Kulkas', label: 'Kulkas', type: 'location' },
+  { id: 'Freezer', label: 'Freezer', type: 'location' },
+  { id: 'kritis', label: 'Kritis (≤2 Hari)', type: 'status' },
 ];
 
-// ─── Shared Components ────────────────────────────────────────────────────────
-
-function TopAppBar({ urgentCount }: { urgentCount: number }) {
-  return (
-    <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface }}>
-      <View style={appBar.header}>
-        <View style={appBar.headerLeft}>
-          <View>
-            <View style={appBar.brandRow}>
-              <Text style={appBar.brandName}>FreshG</Text>
-              <MaterialCommunityIcons name="leaf" size={18} color={C.primaryContainer} />
-            </View>
-          </View>
-        </View>
-        <TouchableOpacity style={appBar.bellBtn} activeOpacity={0.8}>
-          <MaterialIcons name="notifications" size={24} color={C.onSurface} />
-          {urgentCount > 0 && (
-            <View style={appBar.bellBadge}>
-              <Text style={appBar.bellBadgeText}>{urgentCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
-  );
+interface IngredientVisual {
+  bg: string;
+  iconName: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+  iconColor: string;
 }
 
-const appBar = StyleSheet.create({
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
-    backgroundColor: C.surface,
-    borderBottomWidth: 1, borderBottomColor: C.surfaceContainer,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 2, elevation: 2,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  brandRow:  { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  brandName: { fontSize: 20, fontWeight: '800', color: C.primary, letterSpacing: -0.4 },
-  bellBtn:   { padding: 8, borderRadius: 99, position: 'relative' },
-  bellBadge: {
-    position: 'absolute', top: 4, right: 4,
-    minWidth: 18, height: 18, borderRadius: 9,
-    backgroundColor: C.error,
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2, borderColor: C.surface,
-  },
-  bellBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
-});
+function getIngredientVisual(name: string, category: Category): IngredientVisual {
+  const n = name.toLowerCase();
 
-// ─── Location Badge ───────────────────────────────────────────────────────────
-
-function LocationBadge({ location }: { location: StorageLocation }) {
-  if (location === 'Freezer') {
-    return (
-      <View style={[s.itemLocBadge, { backgroundColor: C.surfaceContainerHigh }]}>
-        <MaterialIcons name="ac-unit" size={10} color={C.onSecondaryContainer} />
-        <Text style={[s.itemLocTxt, { color: C.onSecondaryContainer }]}>Freezer</Text>
-      </View>
-    );
+  if (n.includes('telur') || n.includes('egg') || n.includes('ceplok') || n.includes('dadar')) {
+    return { bg: '#fef3c7', iconName: 'egg-fried', iconColor: '#d97706' };
   }
-  if (location === 'Suhu Ruang') {
-    return (
-      <View style={[s.itemLocBadge, { backgroundColor: C.tertiaryFixed + '80' }]}>
-        <Text style={[s.itemLocTxt, { color: C.onTertiaryContainer }]}>Suhu Ruang (Pantry)</Text>
-      </View>
-    );
+  if (n.includes('salad') || n.includes('selada')) {
+    return { bg: '#dcfce7', iconName: 'bowl-mix', iconColor: '#16a34a' };
   }
-  return (
-    <View style={s.itemLocBadge}><Text style={s.itemLocTxt}>{location}</Text></View>
-  );
+  if (n.includes('roti') || n.includes('toast') || n.includes('bread')) {
+    return { bg: '#ffedd5', iconName: 'bread-slice', iconColor: '#c2410c' };
+  }
+  if (n.includes('salmon') || n.includes('ikan') || n.includes('fish') || n.includes('tuna')) {
+    return { bg: '#e0f2fe', iconName: 'fish', iconColor: '#0284c7' };
+  }
+  if (n.includes('sup') || n.includes('soup') || n.includes('soto') || n.includes('rawon') || n.includes('kuah')) {
+    return { bg: '#fef9c3', iconName: 'pot-steam', iconColor: '#ca8a04' };
+  }
+  if (n.includes('ayam') || n.includes('chicken') || n.includes('bebek')) {
+    return { bg: '#fed7aa', iconName: 'food-drumstick', iconColor: '#ea580c' };
+  }
+  if (n.includes('daging') || n.includes('steak') || n.includes('sapi') || n.includes('beef')) {
+    return { bg: '#ffe4e6', iconName: 'food-steak', iconColor: '#e11d48' };
+  }
+  if (n.includes('jamur') || n.includes('mushroom')) {
+    return { bg: '#f5d0fe', iconName: 'mushroom', iconColor: '#a21caf' };
+  }
+  if (n.includes('kue') || n.includes('cake') || n.includes('dessert') || n.includes('cokelat')) {
+    return { bg: '#fce7f3', iconName: 'cupcake', iconColor: '#db2777' };
+  }
+  if (n.includes('bayam') || n.includes('kangkung') || n.includes('sawi') || n.includes('brokoli') || n.includes('wortel')) {
+    return { bg: '#dcfce7', iconName: 'sprout', iconColor: '#15803d' };
+  }
+  if (n.includes('apel') || n.includes('pisang') || n.includes('jeruk') || n.includes('mangga') || n.includes('anggur')) {
+    return { bg: '#fce7f3', iconName: 'food-apple', iconColor: '#e11d48' };
+  }
+  if (n.includes('susu') || n.includes('milk') || n.includes('keju') || n.includes('cheese') || n.includes('yogurt')) {
+    return { bg: '#e0f2fe', iconName: 'cup-water', iconColor: '#0284c7' };
+  }
+  if (n.includes('bawang') || n.includes('cabai') || n.includes('chili') || n.includes('jahe') || n.includes('kunyit')) {
+    return { bg: '#ffedd5', iconName: 'chili-mild', iconColor: '#ea580c' };
+  }
+
+  switch (category) {
+    case 'Sayuran':
+      return { bg: '#dcfce7', iconName: 'sprout', iconColor: '#16a34a' };
+    case 'Buah-buahan':
+      return { bg: '#fce7f3', iconName: 'food-apple', iconColor: '#db2777' };
+    case 'Daging & Olahan':
+      return { bg: '#ffe4e6', iconName: 'food-steak', iconColor: '#e11d48' };
+    case 'Susu & Telur':
+      return { bg: '#fef3c7', iconName: 'egg-fried', iconColor: '#d97706' };
+    case 'Bumbu Dapur':
+      return { bg: '#ffedd5', iconName: 'chili-mild', iconColor: '#ea580c' };
+    case 'Herbal':
+      return { bg: '#ecfdf5', iconName: 'leaf', iconColor: '#059669' };
+    case 'Kering':
+    default:
+      return { bg: '#f3f4f6', iconName: 'grain', iconColor: '#64748b' };
+  }
 }
-
-// ─── Stock Item Card ──────────────────────────────────────────────────────────
-
-function StockItemCard({
-  item,
-  group,
-  isFirst,
-  onEdit,
-  onDelete,
-  onUse,
-}: {
-  item: Ingredient;
-  group: GroupKey;
-  isFirst: boolean;
-  onEdit: (item: Ingredient) => void;
-  onDelete: (item: Ingredient) => void;
-  onUse: (item: Ingredient) => void;
-}) {
-  const g = GROUPS[group];
-  const daysLeft = getDaysUntilExpiry(item.expiryDate);
-  const percent = getFreshnessPercent(daysLeft, item.totalDays);
-  const metaRight = item.note ?? `Ditambahkan: ${daysSince(item.addedDate)} hari lalu`;
-  const isKritis = group === 'kritis';
-
-  const moreBtnRef = useRef<View>(null);
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [menuCoords, setMenuCoords] = useState<{ top: number; right: number }>({ top: 0, right: 16 });
-
-  const handleOpenMenu = () => {
-    if (moreBtnRef.current) {
-      moreBtnRef.current.measureInWindow((x, y, width, height) => {
-        const screenWidth = Dimensions.get('window').width;
-        const screenHeight = Dimensions.get('window').height;
-        const menuHeight = 90;
-        const right = Math.max(16, screenWidth - (x + width));
-        const fitsBelow = y + height + menuHeight + 20 <= screenHeight;
-        const top = fitsBelow ? y + height + 4 : Math.max(16, y - menuHeight - 4);
-
-        setMenuCoords({ top, right });
-        setMenuVisible(true);
-      });
-    } else {
-      setMenuVisible(true);
-    }
-  };
-
-  return (
-    <View style={[s.itemCard, { borderColor: g.cardBorder }, !isFirst && { marginTop: 10 }]}>
-      {/* Top row: Nama + Info & Menu Titik 3 */}
-      <View style={s.itemTop}>
-        <View style={s.itemDetails}>
-          <View style={s.itemTitleRow}>
-            <Text style={s.itemName} numberOfLines={1}>{item.name}</Text>
-          </View>
-          <Text style={s.itemMeta}>
-            <Text style={s.itemMetaBold}>{item.quantity ?? '-'}</Text>  •  {metaRight}
-          </Text>
-        </View>
-
-        {/* Tombol Titik 3 di Atas Kanan */}
-        <TouchableOpacity
-          ref={moreBtnRef}
-          style={s.moreBtn}
-          onPress={handleOpenMenu}
-          activeOpacity={0.6}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityLabel={`Menu aksi untuk ${item.name}`}
-        >
-          <MaterialIcons name="more-vert" size={20} color={C.outline} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Dropdown Menu Modal */}
-      <Modal
-        visible={menuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}
-      >
-        <Pressable style={s.menuOverlay} onPress={() => setMenuVisible(false)}>
-          <View style={[s.dropdownMenu, { top: menuCoords.top, right: menuCoords.right }]}>
-            <TouchableOpacity
-              style={s.dropdownItem}
-              onPress={() => {
-                setMenuVisible(false);
-                onEdit(item);
-              }}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="edit" size={16} color={C.onSurfaceVariant} />
-              <Text style={s.dropdownItemTxt}>Edit</Text>
-            </TouchableOpacity>
-
-            <View style={s.dropdownDivider} />
-
-            <TouchableOpacity
-              style={s.dropdownItem}
-              onPress={() => {
-                setMenuVisible(false);
-                onDelete(item);
-              }}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="delete-outline" size={16} color={C.error} />
-              <Text style={[s.dropdownItemTxt, { color: C.error }]}>Hapus</Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      </Modal>
-
-      {/* Bottom row: Freshness & Tombol Gunakan */}
-      <View style={s.itemBottom}>
-        <View style={s.progressCol}>
-          <View style={s.progressRow}>
-            <Text style={[s.progressLabel, { color: g.progressColor }]}>
-              {daysLeft < 0 ? 'Kedaluwarsa' : `Sisa ${daysLeft} Hari`}
-            </Text>
-          </View>
-          <View style={s.progressBarWrap}>
-            <View style={[s.progressBar, { width: `${percent}%`, backgroundColor: g.barColor }]} />
-          </View>
-          <Text style={s.progressSub}>{percent}% masa segar</Text>
-        </View>
-
-        <View style={s.actionRow}>
-          <TouchableOpacity
-            style={isKritis ? s.btnPrimary : s.btnSecondary}
-            activeOpacity={0.8}
-            onPress={() => onUse(item)}
-          >
-            <MaterialIcons name="soup-kitchen" size={14} color={isKritis ? C.onSecondaryContainer : C.onSurface} />
-            <Text style={isKritis ? s.btnPrimaryTxt : s.btnSecondaryTxt}>Gunakan</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
-
-type Zone = 'Semua' | StorageLocation;
 
 export default function StokScreen() {
   const router = useRouter();
-  const [activeZone, setActiveZone] = useState<Zone>('Semua');
   const { data, loading, isRetrying, error, refetch } = useIngredients();
 
-  // Status & Edit Overrides lokal
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('all');
+
   const [statusOverrides, setStatusOverrides] = useState<Record<string, IngredientStatus>>({});
   const [itemOverrides, setItemOverrides] = useState<Record<string, Partial<Ingredient>>>({});
 
-  // Edit Modal State
+  const [selectedItemForDetail, setSelectedItemForDetail] = useState<Ingredient | null>(null);
+
   const [editingItem, setEditingItem] = useState<Ingredient | null>(null);
   const [editForm, setEditForm] = useState<{
     name: string;
@@ -396,43 +138,51 @@ export default function StokScreen() {
     storageLocation: 'Kulkas',
   });
 
-  const ingredients = useMemo<Ingredient[]>(() => {
-    return (data ?? []).map(i => {
-      let item = { ...i };
-      if (itemOverrides[i.id]) {
-        item = { ...item, ...itemOverrides[i.id] };
-      }
-      if (statusOverrides[i.id]) {
-        item = { ...item, status: statusOverrides[i.id] };
-      }
-      return item;
-    });
+  const activeIngredients = useMemo<Ingredient[]>(() => {
+    return (data ?? [])
+      .map(i => {
+        let item = { ...i };
+        if (itemOverrides[i.id]) {
+          item = { ...item, ...itemOverrides[i.id] };
+        }
+        if (statusOverrides[i.id]) {
+          item = { ...item, status: statusOverrides[i.id] };
+        }
+        return item;
+      })
+      .filter(i => i.status === 'active')
+      .sort((a, b) => a.expiryDate.getTime() - b.expiryDate.getTime());
   }, [data, itemOverrides, statusOverrides]);
 
-  const active = useMemo(() => ingredients.filter(i => i.status === 'active'), [ingredients]);
+  const filteredIngredients = useMemo(() => {
+    let list = activeIngredients;
 
-  const zoneCounts = useMemo(() => {
-    const counts: Partial<Record<StorageLocation, number>> = {};
-    for (const i of active) counts[i.storageLocation] = (counts[i.storageLocation] ?? 0) + 1;
-    return counts;
-  }, [active]);
+    const tabObj = FILTER_TABS.find(t => t.id === activeTab);
+    if (tabObj && tabObj.type !== 'all') {
+      if (tabObj.type === 'category') {
+        list = list.filter(item => item.category === tabObj.id);
+      } else if (tabObj.type === 'location') {
+        list = list.filter(item => item.storageLocation === tabObj.id);
+      } else if (tabObj.type === 'status' && tabObj.id === 'kritis') {
+        list = list.filter(item => getDaysUntilExpiry(item.expiryDate) <= 2);
+      }
+    }
 
-  const visible = useMemo(
-    () => (activeZone === 'Semua' ? active : active.filter(i => i.storageLocation === activeZone))
-      .slice()
-      .sort((a, b) => a.expiryDate.getTime() - b.expiryDate.getTime()),
-    [active, activeZone],
-  );
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        item =>
+          item.name.toLowerCase().includes(q) ||
+          item.category.toLowerCase().includes(q) ||
+          item.storageLocation.toLowerCase().includes(q) ||
+          (item.quantity && item.quantity.toLowerCase().includes(q))
+      );
+    }
 
-  const grouped = useMemo(() => {
-    const result: Record<GroupKey, Ingredient[]> = { kritis: [], perhatian: [], aman: [] };
-    for (const item of visible) result[getGroup(getDaysUntilExpiry(item.expiryDate))].push(item);
-    return result;
-  }, [visible]);
+    return list;
+  }, [activeIngredients, activeTab, searchQuery]);
 
-  const visibleGroups = GROUP_ORDER.filter(k => grouped[k].length > 0);
-
-  const handleOpenEdit = (item: Ingredient) => {
+const handleOpenEdit = (item: Ingredient) => {
     setEditingItem(item);
     setEditForm({
       name: item.name,
@@ -479,7 +229,7 @@ export default function StokScreen() {
             setStatusOverrides(prev => ({ ...prev, [item.id]: 'discarded' }));
           },
         },
-      ],
+      ]
     );
   };
 
@@ -503,107 +253,293 @@ export default function StokScreen() {
             setStatusOverrides(prev => ({ ...prev, [item.id]: 'used' }));
           },
         },
-      ],
+      ]
     );
   };
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
-      <TopAppBar urgentCount={grouped['kritis'].length} />
+      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+      <SafeAreaView edges={['top']} style={s.topSafeArea} />
+
+      <View style={s.headerContainer}>
+        <Text style={s.headerTitle}>Stok Bahan</Text>
+
+        <TouchableOpacity
+          style={s.roundBtn}
+          activeOpacity={0.8}
+          onPress={() => router.push('/scan')}
+          accessibilityLabel="Tambah atau Pindai Bahan"
+        >
+          <MaterialCommunityIcons name="camera-plus-outline" size={20} color="#1e293b" />
+        </TouchableOpacity>
+      </View>
+
       <OfflineBanner onRetryAll={refetch} />
 
+      <View style={s.searchContainer}>
+        <View style={s.searchBar}>
+          <Feather name="search" size={17} color="#064e3b" style={s.searchIcon} />
+          <TextInput
+            style={s.searchInput}
+            placeholder="Cari stok bahan makanan..."
+            placeholderTextColor="#94a3b8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            autoCapitalize="none"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ marginRight: 4 }}
+            >
+              <MaterialIcons name="close" size={18} color="#94a3b8" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <View style={s.filterContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.filterScroll}
+        >
+          {FILTER_TABS.map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[s.filterChip, isActive ? s.filterChipActive : s.filterChipInactive]}
+                activeOpacity={0.8}
+                onPress={() => setActiveTab(tab.id)}
+              >
+                <Text
+                  style={[
+                    s.filterChipText,
+                    isActive ? s.filterChipTextActive : s.filterChipTextInactive,
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       <ScrollView
-        contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 40 }]}
+        contentContainerStyle={[
+          s.listContainer,
+          { paddingBottom: BottomTabInset + 40 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Page Context & Title */}
-        <View style={s.pageContext}>
-          
-        </View>
-
-        {/* Zonasi Penyimpanan (Segmented Control) */}
-        <View style={s.zoneSection}>
-          <View style={s.zoneHeader}>
-            <Text style={s.zoneTitle}>Zona Penyimpanan</Text>
-            <Text style={s.zoneActive}>
-              {activeZone === 'Semua' ? 'Semua Tampil' : activeZone} ({visible.length})
-            </Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.zoneScroll}>
-            <View style={s.segmentedBar}>
-              {ZONES.map(zone => {
-                const isActive = activeZone === zone.value;
-                return (
-                  <TouchableOpacity
-                    key={zone.value}
-                    style={isActive ? s.segmentBtnActive : s.segmentBtn}
-                    activeOpacity={0.8}
-                    onPress={() => setActiveZone(isActive ? 'Semua' : zone.value)}
-                  >
-                    {isActive ? zone.iconActive : zone.icon}
-                    <Text style={isActive ? s.segmentTxtActive : s.segmentTxt}>{zone.value}</Text>
-                    <View style={isActive ? s.segmentBadgeActive : s.segmentBadge}>
-                      <Text style={isActive ? s.segmentBadgeTxtActive : s.segmentBadgeTxt}>
-                        {zoneCounts[zone.value] ?? 0}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </ScrollView>
-
-        </View>
-
-        {/* Chronological Timeline with ApiStateView (Sprint 05) */}
         <ApiStateView
           loading={loading}
           isRetrying={isRetrying}
           error={error}
-          isEmpty={!loading && !error && visible.length === 0}
-          emptyTitle="Belum Ada Bahan Makanan"
-          emptyMessage="Stok bahan makanan untuk zona ini masih kosong."
+          isEmpty={!loading && !error && filteredIngredients.length === 0}
+          emptyTitle="Tidak Ada Bahan Ditemukan"
+          emptyMessage={
+            searchQuery.trim()
+              ? `Tidak ada stok yang cocok dengan kata kunci "${searchQuery}".`
+              : 'Stok bahan makanan untuk kategori ini masih kosong.'
+          }
           onRetry={refetch}
         >
-          <View style={s.timelineSection}>
-            {/* Timeline track line */}
-            <View style={s.timelineTrack} />
+          {filteredIngredients.map(item => {
+            const visual = getIngredientVisual(item.name, item.category);
+            const daysLeft = getDaysUntilExpiry(item.expiryDate);
+            const isUrgent = daysLeft <= 2;
 
-            {visibleGroups.map((key, groupIdx) => {
-              const g = GROUPS[key];
-              const items = grouped[key];
-              return (
-                <View key={key} style={[s.timeGroup, groupIdx > 0 && { marginTop: 16 }]}>
-                  <View style={s.groupMarkerWrap}>
-                    <View style={[s.groupMarker, { backgroundColor: g.markerColor }]}>
-                      <View style={s.groupMarkerInner} />
-                    </View>
-                    <Text style={[s.groupTitle, { color: g.titleColor }]}>{g.title}</Text>
-                    <View style={[s.groupBadge, { backgroundColor: g.badgeBg }]}>
-                      <Text style={[s.groupBadgeTxt, { color: g.badgeColor }]}>{items.length} Item</Text>
-                    </View>
-                  </View>
+            let timeLabel = `${daysLeft} Hari`;
+            if (daysLeft < 0) timeLabel = 'Kedaluwarsa';
+            else if (daysLeft === 0) timeLabel = 'Hari ini';
 
-                  {items.map((item, idx) => (
-                    <StockItemCard
-                      key={item.id}
-                      item={item}
-                      group={key}
-                      isFirst={idx === 0}
-                      onEdit={handleOpenEdit}
-                      onDelete={handleDelete}
-                      onUse={handleUse}
-                    />
-                  ))}
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={s.card}
+                activeOpacity={0.85}
+                onPress={() => setSelectedItemForDetail(item)}
+              >
+                <View style={[s.cardThumbnail, { backgroundColor: visual.bg }]}>
+                  <MaterialCommunityIcons
+                    name={visual.iconName}
+                    size={28}
+                    color={visual.iconColor}
+                  />
                 </View>
-              );
-            })}
-          </View>
+
+                <View style={s.cardMiddle}>
+                  <Text style={s.cardTitle} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <View style={s.cardMetaRow}>
+                    <MaterialIcons
+                      name="access-time"
+                      size={13}
+                      color={isUrgent ? '#ef4444' : '#64748b'}
+                    />
+                    <Text style={[s.cardMetaText, isUrgent && s.cardMetaTextAlert]}>
+                      {timeLabel}
+                    </Text>
+                    <Text style={s.cardMetaDot}>•</Text>
+                    <Text style={s.cardMetaText}>
+                      {item.storageLocation}{item.quantity ? ` (${item.quantity})` : ''}
+                    </Text>
+                  </View>
+                </View>
+
+                <MaterialIcons name="chevron-right" size={24} color="#94a3b8" />
+              </TouchableOpacity>
+            );
+          })}
         </ApiStateView>
       </ScrollView>
 
-      {/* Edit Modal */}
+      <Modal
+        visible={selectedItemForDetail !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedItemForDetail(null)}
+      >
+        <Pressable
+          style={s.modalBackdrop}
+          onPress={() => setSelectedItemForDetail(null)}
+        >
+          <Pressable style={s.detailSheetContainer} onPress={e => e.stopPropagation()}>
+            {selectedItemForDetail && (() => {
+              const item = selectedItemForDetail;
+              const visual = getIngredientVisual(item.name, item.category);
+              const daysLeft = getDaysUntilExpiry(item.expiryDate);
+              const percent = getFreshnessPercent(daysLeft, item.totalDays);
+              const isUrgent = daysLeft <= 2;
+
+              return (
+                <View>
+                  <View style={s.sheetHandleBar} />
+
+                  <View style={s.detailHeaderRow}>
+                    <View style={[s.detailThumbnail, { backgroundColor: visual.bg }]}>
+                      <MaterialCommunityIcons
+                        name={visual.iconName}
+                        size={36}
+                        color={visual.iconColor}
+                      />
+                    </View>
+                    <View style={s.detailHeaderTextCol}>
+                      <Text style={s.detailItemName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <View style={s.detailBadgeRow}>
+                        <View style={[s.detailTag, { backgroundColor: visual.bg }]}>
+                          <Text style={[s.detailTagText, { color: visual.iconColor }]}>
+                            {item.category}
+                          </Text>
+                        </View>
+                        <View style={[s.detailTag, { backgroundColor: '#f1f5f9' }]}>
+                          <Text style={[s.detailTagText, { color: '#475569' }]}>
+                            {item.storageLocation}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={s.detailCloseBtn}
+                      onPress={() => setSelectedItemForDetail(null)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <MaterialIcons name="close" size={20} color="#64748b" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={s.detailStatsCard}>
+                    <View style={s.detailStatItem}>
+                      <Text style={s.detailStatLabel}>Masa Simpan</Text>
+                      <Text style={[s.detailStatValue, isUrgent && { color: '#ef4444' }]}>
+                        {daysLeft <= 0
+                          ? daysLeft === 0
+                            ? 'Hari ini'
+                            : 'Kedaluwarsa'
+                          : `${daysLeft} Hari Lagi`}
+                      </Text>
+                    </View>
+                    <View style={s.detailStatDivider} />
+                    <View style={s.detailStatItem}>
+                      <Text style={s.detailStatLabel}>Kondisi</Text>
+                      <Text style={[s.detailStatValue, isUrgent ? { color: '#ef4444' } : { color: '#16a34a' }]}>
+                        {isUrgent ? 'Segera Olah' : `${percent}% Segar`}
+                      </Text>
+                    </View>
+                    <View style={s.detailStatDivider} />
+                    <View style={s.detailStatItem}>
+                      <Text style={s.detailStatLabel}>Jumlah</Text>
+                      <Text style={s.detailStatValue}>{item.quantity ?? '1 Porsi'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={s.detailActions}>
+                    <TouchableOpacity
+                      style={s.actionBtnPrimary}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        setSelectedItemForDetail(null);
+                        handleUse(item);
+                      }}
+                    >
+                      <MaterialCommunityIcons name="chef-hat" size={20} color="#ffffff" />
+                      <Text style={s.actionBtnPrimaryText}>Tandai Sudah Digunakan</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={s.actionBtnSecondary}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        setSelectedItemForDetail(null);
+                        router.push('/');
+                      }}
+                    >
+                      <MaterialIcons name="lightbulb-outline" size={20} color="#064e3b" />
+                      <Text style={s.actionBtnSecondaryText}>Cari Ide Resep Olahan Sisa</Text>
+                    </TouchableOpacity>
+
+                    <View style={s.actionBtnRow}>
+                      <TouchableOpacity
+                        style={s.actionBtnOutline}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          setSelectedItemForDetail(null);
+                          handleOpenEdit(item);
+                        }}
+                      >
+                        <MaterialIcons name="edit" size={18} color="#475569" />
+                        <Text style={s.actionBtnOutlineText}>Edit</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={s.actionBtnDestructive}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          setSelectedItemForDetail(null);
+                          handleDelete(item);
+                        }}
+                      >
+                        <MaterialIcons name="delete-outline" size={18} color="#ef4444" />
+                        <Text style={s.actionBtnDestructiveText}>Hapus</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              );
+            })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Modal
         visible={editingItem !== null}
         transparent
@@ -618,14 +554,14 @@ export default function StokScreen() {
           <View style={s.editModalContent}>
             <View style={s.editModalHeader}>
               <View style={s.editModalTitleRow}>
-                <MaterialIcons name="edit" size={20} color={C.primary} />
+                <MaterialIcons name="edit" size={20} color="#064e3b" />
                 <Text style={s.editModalTitle}>Edit Bahan</Text>
               </View>
               <TouchableOpacity
                 onPress={() => setEditingItem(null)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <MaterialIcons name="close" size={22} color={C.outline} />
+                <MaterialIcons name="close" size={22} color="#64748b" />
               </TouchableOpacity>
             </View>
 
@@ -636,7 +572,7 @@ export default function StokScreen() {
                 value={editForm.name}
                 onChangeText={text => setEditForm(prev => ({ ...prev, name: text }))}
                 placeholder="Contoh: Bayam Hijau"
-                placeholderTextColor={C.outline}
+                placeholderTextColor="#94a3b8"
               />
             </View>
 
@@ -647,7 +583,7 @@ export default function StokScreen() {
                 value={editForm.quantity}
                 onChangeText={text => setEditForm(prev => ({ ...prev, quantity: text }))}
                 placeholder="Contoh: 2 Ikat"
-                placeholderTextColor={C.outline}
+                placeholderTextColor="#94a3b8"
               />
             </View>
 
@@ -683,188 +619,382 @@ export default function StokScreen() {
                 onPress={handleSaveEdit}
                 activeOpacity={0.8}
               >
-                <MaterialIcons name="check" size={16} color={C.onPrimary} />
+                <MaterialIcons name="check" size={16} color="#ffffff" />
                 <Text style={s.editSaveTxt}>Simpan</Text>
               </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
-      {/* Floating Action Button (Sensor Kamera) */}
-      <TouchableOpacity
-        style={s.fab}
-        activeOpacity={0.8}
-        onPress={() => router.push('/scan')}
-      >
-        <MaterialIcons name="photo-camera" size={20} color={C.onPrimary} />
-        <Text style={s.fabTxt}>Pindai / Scan Barcode</Text>
-      </TouchableOpacity>
     </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.background },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 16 },
-  loading: { paddingVertical: 40, alignItems: 'center' },
-
-  // Context
-  pageContext: { marginBottom: 16 },
-  pageTitle: { fontSize: 24, fontWeight: '800', color: C.onSurface, letterSpacing: -0.2 },
-  pageSubtitle: { fontSize: 14, color: C.onSurfaceVariant, marginTop: 4, lineHeight: 22 },
-
-  // AI Card
-  aiCard: {
-    backgroundColor: C.surfaceLowest,
-    borderRadius: 16, padding: 14,
-    borderWidth: 1, borderColor: C.primary + '33',
-    flexDirection: 'column', gap: 10,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
-    marginBottom: 20,
-  },
-  aiIconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 14, left: 14 },
-  aiTextCol: { marginLeft: 42 },
-  aiTitle: { fontSize: 13, fontWeight: '700', color: C.onSurface, lineHeight: 18 },
-  aiSub: { fontSize: 13, color: C.onSurfaceVariant, marginTop: 4, lineHeight: 20 },
-  aiBtn: { backgroundColor: C.primary, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginTop: 4 },
-  aiBtnTxt: { fontSize: 11, fontWeight: '700', color: C.onPrimary },
-
-  // Zone
-  zoneSection: { marginBottom: 16 },
-  zoneHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  zoneTitle: { fontSize: 16, fontWeight: '700', color: C.onSurface },
-  zoneActive: { fontSize: 11, fontWeight: '700', color: C.primary },
-  zoneScroll: { paddingBottom: 4 },
-  segmentedBar: { flexDirection: 'row', backgroundColor: C.surfaceContainerHigh + '99', borderRadius: 12, padding: 4, gap: 4 },
-  segmentBtnActive: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surfaceLowest, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 1, elevation: 1 },
-  segmentBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  segmentTxtActive: { fontSize: 13, fontWeight: '700', color: C.primary },
-  segmentTxt: { fontSize: 13, fontWeight: '600', color: C.onSurfaceVariant },
-  segmentBadgeActive: { backgroundColor: C.primary + '1A', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 99 },
-  segmentBadgeTxtActive: { fontSize: 10, fontWeight: '800', color: C.primary },
-  segmentBadge: { backgroundColor: C.surfaceContainerHighest, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 99 },
-  segmentBadgeTxt: { fontSize: 10, fontWeight: '800', color: C.onSurfaceVariant },
-
-  // Sort
-  sortWrap: { alignItems: 'flex-end', marginTop: 12 },
-  sortInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sortLabel: { fontSize: 11, fontWeight: '600', color: C.outline },
-  sortSelect: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.surfaceLowest, borderWidth: 1, borderColor: C.outlineVariant, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
-  sortSelectTxt: { fontSize: 11, fontWeight: '600', color: C.onSurface },
-
-  // Timeline
-  timelineSection: { position: 'relative', paddingLeft: 16, marginTop: 16 },
-  timelineTrack: { position: 'absolute', left: 4, top: 12, bottom: 12, width: 2, backgroundColor: C.outlineVariant + '66' },
-  
-  timeGroup: {},
-  groupMarkerWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: -19, marginBottom: 8 },
-  groupMarker: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: C.background, alignItems: 'center', justifyContent: 'center' },
-  groupMarkerInner: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
-  groupTitle: { fontSize: 13, fontWeight: '800', letterSpacing: -0.2 },
-  groupBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
-  groupBadgeTxt: { fontSize: 11, fontWeight: '800' },
-
-  // Cards
-  itemCard: { backgroundColor: C.surfaceLowest, borderRadius: 16, padding: 12, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-  itemTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
-  itemIconWrap: { width: 40, height: 40, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  itemDetails: { flex: 1 },
-  itemTitleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  itemName: { fontSize: 16, fontWeight: '700', color: C.onSurface },
-  moreBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: -4, marginRight: -4 },
-  itemLocBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.surfaceContainerHighest, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  itemLocTxt: { fontSize: 11, fontWeight: '700', color: C.primary },
-  itemStatusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  itemStatusTxt: { fontSize: 11, fontWeight: '800' },
-  itemMeta: { fontSize: 11, color: C.onSurfaceVariant, marginTop: 4 },
-  itemMetaBold: { fontWeight: '700', color: C.onSurface, fontSize: 12 },
-
-  // Dropdown Popover
-  menuOverlay: {
+  root: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: '#f8fafc',
   },
-  dropdownMenu: {
-    position: 'absolute',
-    width: 130,
-    backgroundColor: C.surfaceLowest,
-    borderRadius: 12,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: C.outlineVariant + '40',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 8,
+  topSafeArea: {
+    backgroundColor: '#f8fafc',
   },
-  dropdownItem: {
+
+  headerContainer: {
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 14 : 8,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
   },
-  dropdownItemTxt: {
+  roundBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#064e3b',
+    letterSpacing: -0.4,
+  },
+
+  searchContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 14,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    height: 44,
+    borderWidth: 1.2,
+    borderColor: '#e2e8f0',
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
     fontSize: 13,
+    color: '#1e293b',
+    paddingVertical: 0,
+  },
+  cameraBtn: {
+    padding: 4,
+  },
+
+  filterContainer: {
+    marginBottom: 14,
+  },
+  filterScroll: {
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  filterChip: {
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterChipActive: {
+    backgroundColor: '#18181b',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  filterChipInactive: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  filterChipText: {
+    fontSize: 13,
+  },
+  filterChipTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  filterChipTextInactive: {
+    color: '#475569',
     fontWeight: '600',
-    color: C.onSurface,
-  },
-  dropdownDivider: {
-    height: 1,
-    backgroundColor: C.surfaceContainer,
-    marginHorizontal: 8,
   },
 
-  itemBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: C.surfaceContainerHigh + '99', marginTop: 10, paddingTop: 10 },
-  progressCol: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  progressLabel: { fontSize: 11, fontWeight: '800' },
-  progressBarWrap: { width: 64, height: 6, backgroundColor: C.surfaceContainerHigh, borderRadius: 3, overflow: 'hidden' },
-  progressBar: { height: '100%', borderRadius: 3 },
-  progressSub: { fontSize: 11, color: C.outline },
-  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  btnPrimary: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.secondaryContainer, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  btnPrimaryTxt: { fontSize: 11, fontWeight: '800', color: C.onSecondaryContainer },
-  btnSecondary: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.surfaceContainer, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  btnSecondaryTxt: { fontSize: 11, fontWeight: '700', color: C.onSurface },
-  btnIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: C.surfaceContainer, alignItems: 'center', justifyContent: 'center' },
-  btnIconDanger: { width: 28, height: 28, borderRadius: 8, backgroundColor: C.errorContainer + '66', alignItems: 'center', justifyContent: 'center' },
+  listContainer: {
+    paddingTop: 2,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  cardThumbnail: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardMiddle: {
+    flex: 1,
+    marginLeft: 14,
+    marginRight: 8,
+    justifyContent: 'center',
+    gap: 5,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+    letterSpacing: -0.2,
+  },
+  cardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardMetaText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  cardMetaTextAlert: {
+    color: '#ef4444',
+    fontWeight: '700',
+  },
+  cardMetaDot: {
+    fontSize: 10,
+    color: '#cbd5e1',
+    marginHorizontal: 2,
+  },
 
-  // Edit Modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  detailSheetContainer: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  sheetHandleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#e2e8f0',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  detailHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  detailThumbnail: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailHeaderTextCol: {
+    flex: 1,
+    marginLeft: 14,
+    gap: 6,
+  },
+  detailItemName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1e293b',
+  },
+  detailBadgeRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  detailTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  detailTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  detailCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailStatsCard: {
+    flexDirection: 'row',
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  detailStatItem: {
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  detailStatLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  detailStatValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1e293b',
+  },
+  detailStatDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#e2e8f0',
+  },
+  detailActions: {
+    gap: 10,
+  },
+  actionBtnPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#064e3b',
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 8,
+  },
+  actionBtnPrimaryText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  actionBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#dcfce7',
+    paddingVertical: 13,
+    borderRadius: 16,
+    gap: 8,
+  },
+  actionBtnSecondaryText: {
+    color: '#064e3b',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  actionBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  actionBtnOutline: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingVertical: 12,
+    borderRadius: 14,
+    gap: 6,
+  },
+  actionBtnOutlineText: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  actionBtnDestructive: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fee2e2',
+    paddingVertical: 12,
+    borderRadius: 14,
+    gap: 6,
+  },
+  actionBtnDestructiveText: {
+    color: '#ef4444',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
   editModalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
   },
   editModalContent: {
     width: '100%',
-    maxWidth: 400,
-    backgroundColor: C.surfaceLowest,
-    borderRadius: 20,
+    maxWidth: 420,
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
     padding: 20,
-    borderWidth: 1,
-    borderColor: C.outlineVariant + '40',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowRadius: 12,
+    elevation: 8,
   },
   editModalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: C.surfaceContainer,
+    justifyContent: 'space-between',
+    marginBottom: 18,
   },
   editModalTitleRow: {
     flexDirection: 'row',
@@ -872,29 +1002,28 @@ const s = StyleSheet.create({
     gap: 8,
   },
   editModalTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
-    color: C.onSurface,
-    letterSpacing: -0.2,
+    color: '#1e293b',
   },
   editFormGroup: {
     marginBottom: 14,
+    gap: 6,
   },
   editLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: C.onSurfaceVariant,
-    marginBottom: 6,
+    color: '#475569',
   },
   editInput: {
-    backgroundColor: C.surface,
     borderWidth: 1,
-    borderColor: C.outlineVariant + '80',
-    borderRadius: 10,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingVertical: 10,
     fontSize: 14,
-    color: C.onSurface,
+    color: '#1e293b',
+    backgroundColor: '#f8fafc',
   },
   editLocRow: {
     flexDirection: 'row',
@@ -902,66 +1031,58 @@ const s = StyleSheet.create({
   },
   editLocBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: C.outlineVariant + '60',
-    backgroundColor: C.surface,
     alignItems: 'center',
-    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
   },
   editLocBtnActive: {
-    backgroundColor: C.primary,
-    borderColor: C.primary,
+    borderColor: '#064e3b',
+    backgroundColor: '#dcfce7',
   },
   editLocTxt: {
     fontSize: 12,
     fontWeight: '600',
-    color: C.onSurfaceVariant,
+    color: '#64748b',
   },
   editLocTxtActive: {
-    color: C.onPrimary,
+    color: '#064e3b',
     fontWeight: '700',
   },
   editActions: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: C.surfaceContainer,
+    marginTop: 18,
   },
   editCancelBtn: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: C.outlineVariant,
+    borderColor: '#cbd5e1',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#ffffff',
   },
   editCancelTxt: {
     fontSize: 13,
     fontWeight: '700',
-    color: C.outline,
+    color: '#475569',
   },
   editSaveBtn: {
-    flex: 1.5,
-    flexDirection: 'row',
-    backgroundColor: C.primary,
-    paddingVertical: 10,
-    borderRadius: 10,
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: '#064e3b',
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
     gap: 6,
   },
   editSaveTxt: {
     fontSize: 13,
     fontWeight: '700',
-    color: C.onPrimary,
+    color: '#ffffff',
   },
-
-  // FAB
-  fab: { position: 'absolute', bottom: BottomTabInset + 16, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.primaryContainer, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 99, shadowColor: C.primaryContainer, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  fabTxt: { fontSize: 13, fontWeight: '700', color: C.onPrimary },
 });

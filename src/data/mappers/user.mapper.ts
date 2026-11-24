@@ -1,12 +1,3 @@
-/**
- * MAPPER – UserProfileDTO → UserProfile
- *
- * Transformasi:
- *   - member_code "FG-90214"   → "#FG-90214"
- *   - membership_tier (kode)   → label yang ramah pengguna
- *   - success_rate 0.92        → successPercent 92
- *   - impact_stats (nested)    → impact (camelCase)
- */
 import type { UserProfileDTO } from '@/data/dto/user.dto';
 import type { UserProfile } from '@/types/user';
 

@@ -1,11 +1,3 @@
-/**
- * Auth Context & Provider – FreshG (Sprint 04: Session Management)
- *
- * Mengelola status autentikasi aplikasi:
- * - Membaca token dari SecureStore saat startup
- * - Login: request API -> dapatkan token -> simpan ke SecureStore -> update state
- * - Logout: hapus token dari SecureStore -> bersihkan state -> navigasi ke login
- */
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authStorage } from '@/utils/auth-storage';
 import { api } from '@/data/services/api';
@@ -22,7 +14,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Inisialisasi: baca token dari Secure Storage secara asynchronous saat startup
   useEffect(() => {
     let isMounted = true;
 
@@ -58,9 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  /**
-   * Login method (Task 01)
-   */
   const login = async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
     try {
       console.log('[Auth] [2] Mengirim kredensial ke API Login...');
@@ -74,7 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authStorage.setStoredUser(userDTO);
       console.log('[Auth] [4] Token berhasil disimpan di SecureStore.');
 
-      // Update state aplikasi (Task 01: Authentication State)
       setToken(accessToken);
       setRawUser(userDTO);
       setUser(toUserProfile(userDTO));
@@ -87,9 +74,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  /**
-   * Logout method (Task 03)
-   */
   const logout = async (): Promise<void> => {
     try {
       console.log('[Auth] [8] Logout dipicu -> Menghapus access_token dari SecureStore...');

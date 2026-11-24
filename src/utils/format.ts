@@ -1,5 +1,3 @@
-/** Helper format tampilan (dipakai di UI). */
-
 export function formatRupiah(amount: number): string {
   const digits = Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return `Rp ${digits}`;

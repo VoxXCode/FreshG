@@ -1,21 +1,15 @@
-/**
- * Custom Bottom Tab Bar – FreshG
- * Matches the Material 3 pill-style nav from the HTML reference design.
- */
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Keyboard, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-
 const C = {
-  primary:          '#006c49',
+  primary:          '#16a34a',
   surfaceLowest:    '#ffffff',
-  outlineVariant:   '#bbcabf',
-  onSurfaceVariant: '#6c7a71',
+  outlineVariant:   '#e2e8f0',
+  onSurfaceVariant: '#94a3b8',
+  onSurfaceActive:  '#16a34a',
 };
-
-// ── Tab definitions ───────────────────────────────────────────────────────────
 
 type TabDef = {
   name: string;
@@ -23,137 +17,244 @@ type TabDef = {
   renderIcon: (focused: boolean, color: string) => React.ReactNode;
 };
 
-const TABS: TabDef[] = [
+const LEFT_TABS: TabDef[] = [
   {
     name: 'index',
-    label: 'Beranda',
+    label: 'Home',
     renderIcon: (focused, color) => (
-      <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+      <Ionicons name={focused ? 'home' : 'home-outline'} size={23} color={color} />
     ),
   },
   {
     name: 'stok',
-    label: 'Stok Bahan',
+    label: 'Stok',
     renderIcon: (focused, color) => (
       <MaterialCommunityIcons
-        name={focused ? 'clipboard-list' : 'clipboard-list-outline'}
-        size={22}
+        name={focused ? 'fridge' : 'fridge-outline'}
+        size={23}
         color={color}
       />
-    ),
-  },
-  {
-    name: 'todo',
-    label: 'Daftar Todo',
-    renderIcon: (focused, color) => (
-      <MaterialCommunityIcons
-        name={focused ? 'checkbox-marked-circle' : 'checkbox-marked-circle-outline'}
-        size={22}
-        color={color}
-      />
-    ),
-  },
-  {
-    name: 'tips',
-    label: 'Tips & Resep',
-    renderIcon: (focused, color) => (
-      <Ionicons name={focused ? 'bulb' : 'bulb-outline'} size={22} color={color} />
-    ),
-  },
-  {
-    name: 'pengaturan',
-    label: 'Pengaturan',
-    renderIcon: (focused, color) => (
-      <Ionicons name={focused ? 'settings' : 'settings-outline'} size={22} color={color} />
     ),
   },
 ];
 
-// ── Props ────────────────────────────────────────────────────────────────────
+const RIGHT_TABS: TabDef[] = [
+  {
+    name: 'todo',
+    label: 'Belanja',
+    renderIcon: (focused, color) => (
+      <Ionicons
+        name={focused ? 'clipboard' : 'clipboard-outline'}
+        size={23}
+        color={color}
+      />
+    ),
+  },
+  {
+    name: 'profile',
+    label: 'Profile',
+    renderIcon: (focused, color) => (
+      <Ionicons
+        name={focused ? 'person' : 'person-outline'}
+        size={23}
+        color={color}
+      />
+    ),
+  },
+];
 
 type TabBarProps = { state: any; navigation: any };
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export default function BottomTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [anim] = useState(() => new Animated.Value(1));
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, () => {
+      setKeyboardVisible(true);
+      Animated.timing(anim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardVisible(false);
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [anim]);
 
   const currentRouteName = state.routes[state.index]?.name;
-  // Sembunyikan tab bar saat berada di halaman login atau kamera scan
-  if (currentRouteName === 'login' || currentRouteName === 'scan') {
+  if (
+    currentRouteName === 'login' ||
+    currentRouteName === 'scan' ||
+    currentRouteName === 'notifikasi' ||
+    currentRouteName === 'setting-notifikasi'
+  ) {
     return null;
   }
 
-  // Only render routes that appear in our TABS definition (hides 'explore', 'login', etc.)
-  const visibleRoutes = (state.routes as { key: string; name: string }[]).filter(
-    r => TABS.some(t => t.name === r.name),
-  );
+  const renderTabButton = (tabDef: TabDef) => {
+    const focused = currentRouteName === tabDef.name;
+    const color = focused ? C.onSurfaceActive : C.onSurfaceVariant;
+
+    const onPress = () => {
+      const event = navigation.emit({
+        type: 'tabPress',
+        target: tabDef.name,
+        canPreventDefault: true,
+      });
+      if (!focused && !event.defaultPrevented) {
+        navigation.navigate(tabDef.name);
+      }
+    };
+
+    return (
+      <TouchableOpacity
+        key={tabDef.name}
+        onPress={onPress}
+        activeOpacity={0.7}
+        style={s.tab}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: focused }}
+      >
+        {tabDef.renderIcon(focused, color)}
+        <Text style={[s.label, { color, fontWeight: focused ? '700' : '500' }]}>
+          {tabDef.label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 12 : 14);
 
   return (
-    <View style={[s.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-      {visibleRoutes.map(route => {
-        const tabDef  = TABS.find(t => t.name === route.name)!;
-        const focused = state.routes[state.index]?.name === route.name;
-        const color   = focused ? C.primary : C.onSurfaceVariant;
+    <Animated.View
+      style={[
+        s.wrapper,
+        {
+          paddingBottom: bottomInset,
+          opacity: anim,
+          transform: [
+            {
+              translateY: anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [100, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+      pointerEvents={isKeyboardVisible ? 'none' : 'auto'}
+    >
+      <View style={s.container}>
+        <View style={s.tabGroup}>
+          {LEFT_TABS.map(renderTabButton)}
+        </View>
 
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
-          if (!focused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
-          }
-        };
-
-        return (
+        <View style={s.fabWrapper}>
           <TouchableOpacity
-            key={route.key}
-            onPress={onPress}
-            activeOpacity={0.7}
-            style={s.tab}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: focused }}
+            style={s.fabOuter}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('scan')}
+            accessibilityRole="button"
+            accessibilityLabel="Scan Kamera"
           >
-            {tabDef.renderIcon(focused, color)}
-            <Text style={[s.label, { color, fontWeight: focused ? '700' : '500' }]}>
-              {tabDef.label}
-            </Text>
+            <View style={s.fabInner}>
+              <MaterialCommunityIcons name="camera" size={24} color="#ffffff" />
+            </View>
           </TouchableOpacity>
-        );
-      })}
-    </View>
+        </View>
+
+        <View style={s.tabGroup}>
+          {RIGHT_TABS.map(renderTabButton)}
+        </View>
+      </View>
+    </Animated.View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
+  wrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: C.surfaceLowest,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 8,
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: C.surfaceLowest,
-    borderTopWidth: 1,
-    borderTopColor: C.outlineVariant + '44',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
     paddingTop: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 8,
+  },
+  tabGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
   },
   tab: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 4,
+    minWidth: 56,
+    gap: 4,
   },
   label: {
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.1,
+  },
+  fabWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -22,
+    zIndex: 10,
+    paddingHorizontal: 6,
+  },
+  fabOuter: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 6,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  fabInner: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#16a34a',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

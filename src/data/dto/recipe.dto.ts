@@ -1,9 +1,3 @@
-/**
- * DTO – Resep
- *
- * Field server yang tidak dipakai (`slug`, `author_id`, `calories`,
- * `created_at`, `updated_at`) tidak dimasukkan.
- */
 export interface RecipeDTO {
   id: number;
   title: string;

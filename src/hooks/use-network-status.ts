@@ -1,16 +1,7 @@
-/**
- * Network Status Hook – FreshG (Sprint 05: Offline Handling)
- *
- * Mendeteksi status konektivitas internet perangkat:
- * - Menggunakan `expo-network` pada platform native (iOS & Android)
- * - Fallback `navigator.onLine` pada platform Web
- * - Menyediakan mode simulasi (Testing Mode) untuk kemudahan demo Sprint 05
- */
 import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import * as Network from 'expo-network';
 
-// State simulasi global untuk pengujian demonstrasi offline (Slide 11 & 12)
 let simulatedOffline = false;
 const listeners = new Set<(isOffline: boolean) => void>();
 
@@ -57,7 +48,6 @@ export function useNetworkStatus() {
   useEffect(() => {
     let isMounted = true;
 
-    // Pemeriksaan koneksi awal secara asynchronous tanpa memicu synchronous setState in effect
     const initialCheck = async () => {
       if (simulatedOffline) {
         if (isMounted) setIsOnline(false);
@@ -80,13 +70,11 @@ export function useNetworkStatus() {
 
     void initialCheck();
 
-    // Listener simulasi offline
     const simListener = (isOff: boolean) => {
       if (isMounted) setIsOnline(!isOff);
     };
     listeners.add(simListener);
 
-    // Event listener untuk Web
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const handleOnline = () => {
         if (isMounted && !simulatedOffline) setIsOnline(true);

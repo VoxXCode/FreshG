@@ -1,12 +1,9 @@
-/**
- * Application Data – Profil Pengguna
- */
 export interface ImpactStats {
-  savedAmount: number;     // Rupiah
+  savedAmount: number;
   rescuedItems: number;
-  successPercent: number;  // 0..100
+  successPercent: number;
   co2PreventedKg: number;
-  topPercentile: number;   // mis. 5 → "5% teratas"
+  topPercentile: number;
 }
 
 export interface UserProfile {
@@ -14,7 +11,7 @@ export interface UserProfile {
   name: string;
   email: string;
   avatarUrl: string;
-  memberId: string;        // mis. "#FG-90214"
-  membershipLabel: string; // mis. "Member Eco-Saver 🌱"
+  memberId: string;
+  membershipLabel: string;
   impact: ImpactStats;
 }

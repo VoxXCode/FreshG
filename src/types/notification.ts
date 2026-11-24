@@ -1,7 +1,3 @@
-/**
- * Types untuk Push Notification (Week 11: Sprint 09 - PRESIDENTKU / FreshG)
- */
-
 export interface NotificationPayloadData {
   screen?: string;
   id?: string | number;

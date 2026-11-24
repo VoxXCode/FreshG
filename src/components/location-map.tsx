@@ -1,8 +1,3 @@
-/**
- * FreshG / PresidentKu – Location Map Component (Native - Android & iOS)
- * Menggunakan WebView + Leaflet OpenStreetMap (Bebas Biaya & Tanpa Kebutuhan API Key Berbayar).
- * Memenuhi Task 02 (Slide 8 & 13) dan Visual Geofencing (Slide 10 & 14).
- */
 import { useRef, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -71,7 +66,6 @@ export default function LocationMap({
         )}
       />
 
-      {/* ── Overlay Badge Lokasi (Slide 8 & 13) ── */}
       <View style={styles.overlayBadge}>
         <View style={styles.badgeDot} />
         <View>
@@ -84,7 +78,6 @@ export default function LocationMap({
         </View>
       </View>
 
-      {/* ── Floating Map Controls (+, -, re-center) ── */}
       <View style={styles.controlsCol}>
         <TouchableOpacity style={styles.ctrlBtn} onPress={handleCenterUser} activeOpacity={0.8}>
           <MaterialIcons name="my-location" size={20} color="#006c49" />

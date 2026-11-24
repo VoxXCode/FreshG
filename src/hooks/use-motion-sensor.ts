@@ -1,13 +1,3 @@
-/**
- * Motion Sensor Hook – FreshG (Week 7: Sprint 06 - Device Sensor)
- *
- * Mengimplementasikan:
- * 1. Koneksi ke Sensor Accelerometer menggunakan `expo-sensors` (Task 01)
- * 2. Pembacaan data X, Y, Z secara real-time dengan update interval 100ms (Task 02)
- * 3. Log data ke console (Slide 9 & 10)
- * 4. Deteksi pergerakan & goyangan (Shake Detection Threshold) dengan feedback getaran (Task 03)
- * 5. Fallback & simulasi untuk platform Web dan Emulator
- */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Vibration, Platform } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
@@ -21,8 +11,8 @@ export interface AccelerometerPoint {
 }
 
 export interface UseMotionSensorOptions {
-  updateInterval?: number; // ms, default 100ms
-  shakeThreshold?: number; // threshold magnitudo, default 1.45G
+  updateInterval?: number;
+  shakeThreshold?: number;
   onShake?: () => void;
 }
 
@@ -45,10 +35,8 @@ export function useMotionSensor({
     onShakeRef.current = onShake;
   }, [onShake]);
 
-  // Fungsi pemicu goyang (dipanggil saat sensor melebihi threshold atau via simulasi)
   const triggerShake = useCallback(() => {
     const now = Date.now();
-    // Debounce agar tidak terpanggil berulang-ulang dalam 800ms
     if (now - lastShakeTimeRef.current < 800) return;
     lastShakeTimeRef.current = now;
 
@@ -86,7 +74,6 @@ export function useMotionSensor({
           return;
         }
 
-        // Setup interval 100ms (Slide 9 & 10)
         Accelerometer.setUpdateInterval(updateInterval);
 
         subscription = Accelerometer.addListener(accelerometerData => {
@@ -95,12 +82,8 @@ export function useMotionSensor({
           const { x, y, z } = accelerometerData;
           const magnitude = Math.sqrt(x * x + y * y + z * z);
 
-          // Log format sesuai output console Slide 9 & 10
-          // console.log(`Accelerometer: x=${x.toFixed(2)}, y=${y.toFixed(2)}, z=${z.toFixed(2)}`);
+setData({ x, y, z });
 
-          setData({ x, y, z });
-
-          // Simpan riwayat 12 titik terakhir untuk visualisasi grafik perubahan nilai
           setHistory(prev => {
             const nextPoint: AccelerometerPoint = {
               x,
@@ -113,7 +96,6 @@ export function useMotionSensor({
             return updated.length > 12 ? updated.slice(updated.length - 12) : updated;
           });
 
-          // Task 03: Deteksi Threshold Gerakan
           if (magnitude > shakeThreshold) {
             triggerShake();
           }
@@ -135,9 +117,7 @@ export function useMotionSensor({
     };
   }, [isActive, updateInterval, shakeThreshold, triggerShake]);
 
-  // Simulasi goyang untuk pengujian di Web & Emulator
   const simulateShake = useCallback(() => {
-    // Buat lonjakan nilai sesaat
     setData({ x: 1.2, y: 1.6, z: 0.9 });
     triggerShake();
     setTimeout(() => {

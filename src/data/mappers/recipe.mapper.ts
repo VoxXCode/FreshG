@@ -1,6 +1,3 @@
-/**
- * MAPPER – RecipeDTO → Recipe
- */
 import type { RecipeDTO } from '@/data/dto/recipe.dto';
 import type { Recipe } from '@/types/recipe';
 import { STORAGE_LOCATIONS, type StorageLocation } from '@/types/ingredient';
@@ -21,7 +18,6 @@ export function toRecipe(dto: RecipeDTO): Recipe {
     cookTimeMinutes: dto.cook_time_minutes,
     sourceLocation: toStorageLocation(dto.source_location),
     ingredientsTotal: dto.ingredients_total,
-    // pastikan tidak melebihi total
     ingredientsAvailable: Math.min(dto.ingredients_available, dto.ingredients_total),
     estimatedSaving: dto.estimated_saving_idr,
     isFeatured: dto.is_featured,

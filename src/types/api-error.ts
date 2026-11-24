@@ -1,13 +1,9 @@
-/**
- * API Error Types – FreshG (Sprint 05: Error Handling & Reliability)
- */
-
 export type ApiErrorType =
-  | 'OFFLINE'        // Perangkat tidak memiliki koneksi internet
-  | 'TIMEOUT'        // Request melebihi batas waktu maksimal
-  | 'CLIENT_ERROR'   // HTTP 4xx (400, 401, 403, 404)
-  | 'SERVER_ERROR'   // HTTP 5xx (500, 502, 503)
-  | 'NETWORK_ERROR'; // Kegagalan koneksi umum / DNS / socket
+  | 'OFFLINE'
+  | 'TIMEOUT'
+  | 'CLIENT_ERROR'
+  | 'SERVER_ERROR'
+  | 'NETWORK_ERROR';
 
 export class ApiError extends Error {
   public readonly type: ApiErrorType;
@@ -26,7 +22,6 @@ export class ApiError extends Error {
     this.statusCode = statusCode;
     this.userFriendlyMessage = userFriendlyMessage || message;
 
-    // Menjaga prototype chain yang benar untuk instance TypeScript
     Object.setPrototypeOf(this, ApiError.prototype);
   }
 

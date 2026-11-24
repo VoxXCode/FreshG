@@ -8,14 +8,10 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import BottomTabBar from '@/components/bottom-tab-bar';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 
-// Nonaktifkan pop-up overlay peringatan/error LogBox agar tidak menutupi layar pengujian HP
 LogBox.ignoreAllLogs(true);
 
 SplashScreen.preventAutoHideAsync();
 
-/**
- * GlobalNotificationHandler – Menangani Deep Linking saat notifikasi ditekan (Week 11 Slide 10 & 14)
- */
 function GlobalNotificationHandler() {
   const router = useRouter();
 
@@ -40,11 +36,6 @@ function GlobalNotificationHandler() {
   return null;
 }
 
-/**
- * AuthNavigationGuard – Mengatur proteksi rute (Week 5: Sprint 04 - Task 03)
- * Mengalihkan pengguna unauthenticated ke layar login,
- * dan mengalihkan pengguna authenticated ke beranda.
- */
 function AuthNavigationGuard() {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
@@ -76,18 +67,20 @@ function MainNavigation() {
       <AuthNavigationGuard />
       <GlobalNotificationHandler />
       <Tabs
-        screenOptions={{ headerShown: false }}
+        screenOptions={{
+          headerShown: false,
+          tabBarHideOnKeyboard: true,
+        }}
         tabBar={(props) => <BottomTabBar {...props} />}
       >
-        {/* Visible tabs */}
-        <Tabs.Screen name="index"       options={{ title: 'Beranda' }} />
-        <Tabs.Screen name="stok"        options={{ title: 'Stok Bahan' }} />
-        <Tabs.Screen name="todo"        options={{ title: 'Daftar Todo' }} />
-        <Tabs.Screen name="tips"        options={{ title: 'Tips & Resep' }} />
-        <Tabs.Screen name="pengaturan"  options={{ title: 'Pengaturan' }} />
+        <Tabs.Screen name="index"       options={{ title: 'Home' }} />
+        <Tabs.Screen name="stok"        options={{ title: 'Stok' }} />
+        <Tabs.Screen name="todo"        options={{ title: 'Belanja' }} />
+        <Tabs.Screen name="profile"     options={{ title: 'Profile' }} />
 
-        {/* Hidden – not shown in tab bar */}
-        <Tabs.Screen name="notifikasi"  options={{ href: null }} />
+        <Tabs.Screen name="notifikasi"          options={{ title: 'Notification', href: null }} />
+        <Tabs.Screen name="setting-notifikasi"  options={{ title: 'Notification Settings', href: null }} />
+        <Tabs.Screen name="tips"                options={{ title: 'Tips & Resep', href: null }} />
         <Tabs.Screen name="lokasi"      options={{ href: null }} />
         <Tabs.Screen name="sensor"      options={{ href: null }} />
         <Tabs.Screen name="scan"        options={{ href: null }} />

@@ -1,10 +1,3 @@
-/**
- * Secure Storage Utility – FreshG (Sprint 04: Secure Token Storage)
- *
- * Menggunakan `expo-secure-store` untuk menyimpan kredensial/token secara aman
- * terenkripsi pada perangkat iOS & Android (Keychain / Keystore).
- * Dilengkapi fallback untuk web agar kompatibel di semua platform.
- */
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
@@ -12,9 +5,6 @@ const TOKEN_KEY = 'freshg_access_token';
 const USER_KEY = 'freshg_user_data';
 
 export const authStorage = {
-  /**
-   * Mengambil access token dari Secure Storage
-   */
   async getAccessToken(): Promise<string | null> {
     try {
       if (Platform.OS === 'web') {
@@ -30,9 +20,6 @@ export const authStorage = {
     }
   },
 
-  /**
-   * Menyimpan access token ke Secure Storage
-   */
   async setAccessToken(token: string): Promise<void> {
     try {
       if (Platform.OS === 'web') {
@@ -47,9 +34,6 @@ export const authStorage = {
     }
   },
 
-  /**
-   * Menghapus access token dari Secure Storage (saat Logout)
-   */
   async removeAccessToken(): Promise<void> {
     try {
       if (Platform.OS === 'web') {
@@ -64,9 +48,6 @@ export const authStorage = {
     }
   },
 
-  /**
-   * Mengambil data profil user yang tersimpan
-   */
   async getStoredUser<T = unknown>(): Promise<T | null> {
     try {
       let raw: string | null = null;
@@ -83,9 +64,6 @@ export const authStorage = {
     }
   },
 
-  /**
-   * Menyimpan data profil user
-   */
   async setStoredUser(user: unknown): Promise<void> {
     try {
       const raw = JSON.stringify(user);
@@ -101,9 +79,6 @@ export const authStorage = {
     }
   },
 
-  /**
-   * Membersihkan seluruh sesi (Token + Profil)
-   */
   async clearSession(): Promise<void> {
     await this.removeAccessToken();
     try {

@@ -6,10 +6,6 @@ import { mealApi, type MealDetail } from '@/data/services/meal-api';
 import { useAsyncData } from './use-async-data';
 import type { Recipe } from '@/types/recipe';
 
-/**
- * Mengambil data resep makanan secara asinkron dari REST API TheMealDB
- * Jika jaringan bermasalah / offline, otomatis fallback ke data mock lokal.
- */
 async function fetchRecipes(query = 'chicken'): Promise<Recipe[]> {
   try {
     const onlineRecipes = await mealApi.searchRecipes(query);
@@ -39,9 +35,6 @@ export function useGuides() {
   return useAsyncData(fetchGuides);
 }
 
-/**
- * Hook untuk memuat detail resep lengkap dari TheMealDB (bahan & instruksi memasak)
- */
 export function useRecipeDetail() {
   const [detail, setDetail] = useState<MealDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -69,11 +62,6 @@ export function useRecipeDetail() {
   return { detail, loading, error, loadDetail, clearDetail };
 }
 
-/**
- * Implementasi Slide 11 PPT: Eksekusi Paralel (Concurrent)
- * Menggunakan Promise.allSettled ('Resilient Engine' / Toleran Error)
- * Mengambil Recipes dan Guides secara bersamaan tanpa saling memblokir.
- */
 export async function fetchTipsDataParallel(query = 'chicken') {
   const [recipesResult, guidesResult] = await Promise.allSettled([
     fetchRecipes(query),

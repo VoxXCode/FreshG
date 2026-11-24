@@ -1,8 +1,4 @@
-/**
- * FreshG – Home / Beranda Screen
- * Faithful React Native translation of the HTML reference design.
- */
-import { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,9 +7,9 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Animated,
-  Platform,
   StatusBar,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -26,853 +22,937 @@ import {
 } from '@expo/vector-icons';
 
 import {
-  type Ingredient,
   type Category,
-  type StorageLocation,
-  type FreshnessStatus,
-  type IngredientStatus,
-  CATEGORIES,
-  STORAGE_LOCATIONS,
-  FRESHNESS_CONFIG,
-  STORAGE_TIPS,
-  DEFAULT_EXPIRY_DAYS,
-  getFreshnessStatus,
   getDaysUntilExpiry,
-  getFreshnessPercent,
 } from '@/types/ingredient';
 import { BottomTabInset } from '@/constants/theme';
 import { useIngredients } from '@/hooks/use-ingredients';
 import { ApiStateView } from '@/components/ui/api-state-view';
 import { OfflineBanner } from '@/components/ui/offline-banner';
 
-// ─── Design Tokens (translated from Tailwind config) ─────────────────────────
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const C = {
-  primary:            '#006c49',
-  primaryContainer:   '#10b981',
-  onPrimary:          '#ffffff',
-  onPrimaryContainer: '#00422b',
-  secondary:          '#006c4a',
-  secondaryContainer: '#82f5c1',
-  onSecondaryContainer: '#00714e',
-  surface:            '#f8f9ff',
-  surfaceContainer:   '#e5eeff',
-  surfaceContainerLow:'#eff4ff',
-  surfaceLowest:      '#ffffff',
-  onSurface:          '#0b1c30',
-  onSurfaceVariant:   '#3c4a42',
-  outlineVariant:     '#bbcabf',
-  outline:            '#6c7a71',
-  error:              '#ba1a1a',
-  errorContainer:     '#ffdad6',
-  onErrorContainer:   '#93000a',
-  tertiary:           '#855300',
-  tertiaryContainer:  '#e29100',
-  tertiaryFixed:      '#ffddb8',
-  tertiaryFixedDim:   '#ffb95f',
-  onTertiaryContainer:'#523200',
+  primary:          '#16a34a',
+  primaryDark:      '#064e3b',
+  primaryLight:     '#dcfce7',
+  background:       '#f8fafc',
+  surface:          '#ffffff',
+  textPrimary:      '#0f172a',
+  textSecondary:    '#64748b',
+  textMuted:        '#94a3b8',
+  border:           '#e2e8f0',
+  borderLight:      '#f1f5f9',
+  accentYellow:     '#eab308',
+  accentRed:        '#ef4444',
+  tagYellowBg:      '#fef9c3',
+  tagYellowText:    '#854d0e',
+  tagGreenBg:       '#f0fdf4',
+  tagGreenText:     '#15803d',
+  tagRedBg:         '#fee2e2',
+  tagRedText:       '#991b1b',
 };
 
-// ─── Category icon map ────────────────────────────────────────────────────────
-
-type MCName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-type MIName = React.ComponentProps<typeof MaterialIcons>['name'];
-
-const CATEGORY_MC: Record<Category, MCName> = {
-  'Sayuran':         'sprout',
-  'Buah-buahan':     'fruit-grapes',
-  'Bumbu Dapur':     'chili-mild',
-  'Daging & Olahan': 'food-steak',
-  'Susu & Telur':    'egg',
-  'Herbal':          'leaf',
-  'Kering':          'grain',
-};
-
-const CATEGORY_BG: Record<Category, string> = {
-  'Sayuran':         '#dcfce7',
-  'Buah-buahan':     '#fce7f3',
-  'Bumbu Dapur':     '#fef9c3',
-  'Daging & Olahan': '#fee2e2',
-  'Susu & Telur':    '#ede9fe',
-  'Herbal':          '#d1fae5',
-  'Kering':          '#fef3c7',
-};
-
-const STORAGE_ICON: Record<StorageLocation, { icon: string; bg: string; color: string }> = {
-  'Kulkas':      { icon: 'snow-outline',               bg: '#e0f2fe', color: '#0369a1' },
-  'Freezer':     { icon: 'ice-cream-outline',           bg: '#eef2ff', color: '#4338ca' },
-  'Suhu Ruang':  { icon: 'sunny-outline',               bg: '#fef3c7', color: '#b45309' },
-  'Lemari':      { icon: 'file-tray-stacked-outline',   bg: '#f3f4f6', color: '#6b7280' },
-};
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-// Data bahan diambil dari server lewat useIngredients():
-// src/data/server/ingredients.json → IngredientDTO → toIngredient() → Ingredient
-
-// ─── Freshness Progress Bar ───────────────────────────────────────────────────
-
-function FreshnessBar({ percent, status }: { percent: number; status: FreshnessStatus }) {
-  const cfg = FRESHNESS_CONFIG[status];
-  const freshnessLabel =
-    status === 'fresh'    ? 'Kondisi Sangat Segar' :
-    status === 'warning'  ? 'Perlu Perhatian'       :
-    status === 'expiring' ? 'Masa Simpan Kritis'    :
-    'Kedaluwarsa';
-
-  return (
-    <View style={pb.wrap}>
-      <View style={pb.labelRow}>
-        <Text style={pb.label}>{freshnessLabel}</Text>
-        <Text style={pb.pct}>Sisa {percent}%</Text>
-      </View>
-      <View style={pb.track}>
-        <View style={[pb.fill, { width: `${percent}%`, backgroundColor: cfg.barColor }]} />
-      </View>
-    </View>
-  );
+interface RecipeTip {
+  id: string;
+  name: string;
+  category: Category;
+  rating: number;
+  reviewsCount: number;
+  cookTime: string;
+  savingLabel: string;
+  usedIngredients: string;
+  tipMessage: string;
+  imageUrl: string;
+  matchBadge: string;
 }
 
-const pb = StyleSheet.create({
-  wrap:     { marginTop: 10 },
-  labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  label:    { fontSize: 11, fontWeight: '700', color: '#000000' },
-  pct:      { fontSize: 11, fontWeight: '700', color: '#000000' },
-  track:    { height: 6, backgroundColor: '#e5eeff', borderRadius: 99, overflow: 'hidden' },
-  fill:     { height: '100%', borderRadius: 99 },
-});
+const DEFAULT_RECIPE_TIPS: RecipeTip[] = [
+  {
+    id: 'tip-1',
+    name: 'Sup Bayam Jagung Telur',
+    category: 'Sayuran',
+    rating: 4.95,
+    reviewsCount: 280,
+    cookTime: '15 Mnt',
+    savingLabel: 'Hemat Rp 45rb',
+    usedIngredients: 'Bayam, Jagung, Telur',
+    tipMessage: 'Sisa bayam hijau sebelum layu menjadi sup hangat bernutrisi tanpa sisa.',
+    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80',
+    matchBadge: 'Sisa Kulkas',
+  },
+  {
+    id: 'tip-2',
+    name: 'Tumis Ayam Paprika Cepat',
+    category: 'Daging & Olahan',
+    rating: 4.90,
+    reviewsCount: 154,
+    cookTime: '20 Mnt',
+    savingLabel: 'Hemat Rp 30rb',
+    usedIngredients: 'Daging Ayam, Bawang',
+    tipMessage: 'Gunakan stok dada ayam beku freezer sebelum batas 1 bulan, tetap juicy dan gurih.',
+    imageUrl: 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=500&q=80',
+    matchBadge: 'Dari Freezer',
+  },
+  {
+    id: 'tip-3',
+    name: 'Smoothie Bayam Buah Segar',
+    category: 'Buah-buahan',
+    rating: 4.88,
+    reviewsCount: 210,
+    cookTime: '5 Mnt',
+    savingLabel: 'Hemat Rp 25rb',
+    usedIngredients: 'Sisa Bayam, Pisang/Apel',
+    tipMessage: 'Solusi kilat blender sisa daun bayam dan buah manis alami tanpa gula tambahan.',
+    imageUrl: 'https://images.unsplash.com/photo-1556881286-fc6915169721?w=500&q=80',
+    matchBadge: 'Kilat 5 Mnt',
+  },
+  {
+    id: 'tip-4',
+    name: 'Omelet Sayur Kulkas Kilat',
+    category: 'Susu & Telur',
+    rating: 4.85,
+    reviewsCount: 340,
+    cookTime: '10 Mnt',
+    savingLabel: 'Hemat Rp 20rb',
+    usedIngredients: 'Telur, Wortel, Bawang',
+    tipMessage: 'Cincang sayuran sisa di chiller kulkas lalu kocok bersama telur ayam.',
+    imageUrl: 'https://images.unsplash.com/photo-1510693206972-df098062cb71?w=500&q=80',
+    matchBadge: 'Praktis',
+  },
+  {
+    id: 'tip-5',
+    name: 'Nasi Goreng Sayuran Chiller',
+    category: 'Bumbu Dapur',
+    rating: 4.92,
+    reviewsCount: 512,
+    cookTime: '15 Mnt',
+    savingLabel: 'Hemat Rp 35rb',
+    usedIngredients: 'Nasi Kemarin, Bumbu Dapur',
+    tipMessage: 'Habiskan sisa nasi dan aneka bumbu dapur aromatik menjadi nasi goreng istimewa.',
+    imageUrl: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=500&q=80',
+    matchBadge: 'Nol Sisa',
+  },
+  {
+    id: 'tip-6',
+    name: 'Salad Sayur Saus Wijen',
+    category: 'Sayuran',
+    rating: 4.80,
+    reviewsCount: 180,
+    cookTime: '8 Mnt',
+    savingLabel: 'Hemat Rp 18rb',
+    usedIngredients: 'Selada, Wortel, Tomat',
+    tipMessage: 'Iris renyah sisa sayuran segar dengan dressing wijen sangrai untuk camilan sehat.',
+    imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500&q=80',
+    matchBadge: 'Segar Alami',
+  },
+];
 
-// ─── Storage Location Pill ────────────────────────────────────────────────────
-
-function StoragePill({ location }: { location: StorageLocation }) {
-  const { bg, color, icon } = STORAGE_ICON[location];
-  return (
-    <View style={[pill.wrap, { backgroundColor: bg }]}>
-      <Ionicons name={icon as any} size={11} color={color} />
-      <Text style={[pill.text, { color }]}>{location}</Text>
-    </View>
-  );
+function getDeterministicMeta(id: string, name: string) {
+  let hash = 0;
+  const str = id + name;
+  for (let idx = 0; idx < str.length; idx++) {
+    hash = (hash * 31 + str.charCodeAt(idx)) & 0xffffffff;
+  }
+  const positive = Math.abs(hash);
+  const reviewsCount = 100 + (positive % 400);
+  const cookMin = 10 + (positive % 15);
+  const savingRb = 20 + (positive % 35);
+  return {
+    reviewsCount,
+    cookTime: `${cookMin} Mnt`,
+    savingLabel: `Hemat Rp ${savingRb}rb`,
+  };
 }
 
-const pill = StyleSheet.create({
-  wrap:  { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
-  text:  { fontSize: 11, fontWeight: '700' },
-});
-
-// ─── Freshness Badge ──────────────────────────────────────────────────────────
-
-function FreshnessBadge({ daysLeft }: { status?: FreshnessStatus; daysLeft: number }) {
-  const label =
-    daysLeft < 0   ? 'Kedaluwarsa' :
-    daysLeft === 0 ? 'Hari ini'    :
-    `${daysLeft} Hari`;
-
-  return (
-    <View style={fb.wrap}>
-      <Text style={fb.text}>{label}</Text>
-    </View>
-  );
+interface CategoryItem {
+  id: string;
+  name: string;
+  categoryFilter?: Category;
+  bgColor: string;
+  iconName: string;
+  iconColor: string;
+  iconType: 'material' | 'mc' | 'ionicons';
 }
 
-const fb = StyleSheet.create({
-  wrap: {
-    alignSelf: 'flex-start',
+const CIRCULAR_CATEGORIES: CategoryItem[] = [
+  {
+    id: 'see_all',
+    name: 'See All',
+    bgColor: '#dcfce7',
+    iconName: 'grid-view',
+    iconColor: '#16a34a',
+    iconType: 'material',
   },
-  text: { fontSize: 11, fontWeight: '700', color: '#000000' },
-});
-
-// ─── Ingredient Card ──────────────────────────────────────────────────────────
-
-function IngredientCard({
-  item, onUse, onDiscard,
-}: {
-  item: Ingredient;
-  onUse: (id: string) => void;
-  onDiscard: (id: string) => void;
-}) {
-  const status   = getFreshnessStatus(item.expiryDate);
-  const daysLeft = getDaysUntilExpiry(item.expiryDate);
-  const percent  = getFreshnessPercent(daysLeft, item.totalDays);
-  const catBg    = CATEGORY_BG[item.category];
-  const cfg      = FRESHNESS_CONFIG[status];
-
-  const isExpiring = status === 'expiring' || status === 'expired';
-
-  return (
-    <View style={[ic.card, isExpiring && ic.cardUrgent]}>
-      {/* Top row */}
-      <View style={ic.topRow}>
-
-        {/* Name + meta */}
-        <View style={{ flex: 1 }}>
-          <Text style={ic.name} numberOfLines={1}>{item.name}</Text>
-          <View style={ic.metaRow}>
-            {item.quantity && (
-              <Text style={ic.quantity}>{item.quantity}</Text>
-            )}
-          </View>
-        </View>
-
-        {/* Badge */}
-        <FreshnessBadge status={status} daysLeft={daysLeft} />
-      </View>
-
-      {/* Progress bar */}
-      <FreshnessBar percent={percent} status={status} />
-
-      {/* Divider */}
-      <View style={ic.divider} />
-
-      {/* Quick Actions */}
-      <View style={ic.actions}>
-        <TouchableOpacity
-          style={[ic.btn, ic.btnDiscard]}
-          onPress={() => onDiscard(item.id)}
-          activeOpacity={0.8}
-        >
-          <MaterialIcons name="delete" size={15} color={C.error} />
-          <Text style={[ic.btnTxt, { color: C.error }]}>Buang</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[ic.btn, ic.btnUse]}
-          onPress={() => onUse(item.id)}
-          activeOpacity={0.8}
-        >
-          <MaterialIcons name="check" size={15} color={C.onSecondaryContainer} />
-          <Text style={[ic.btnTxt, { color: C.onSecondaryContainer }]}>Gunakan</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-const ic = StyleSheet.create({
-  card: {
-    backgroundColor: C.surfaceLowest,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: C.outlineVariant + '99',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+  {
+    id: 'dairy',
+    name: 'Dairy',
+    categoryFilter: 'Susu & Telur',
+    bgColor: '#e0f2fe',
+    iconName: 'cup-water',
+    iconColor: '#0284c7',
+    iconType: 'mc',
   },
-  cardUrgent: {
-    borderColor: C.outlineVariant + '99',
+  {
+    id: 'meat',
+    name: 'Meat',
+    categoryFilter: 'Daging & Olahan',
+    bgColor: '#ffe4e6',
+    iconName: 'food-steak',
+    iconColor: '#e11d48',
+    iconType: 'mc',
   },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconWrap: {
-    width: 48, height: 48, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
+  {
+    id: 'pantry',
+    name: 'Pantry',
+    categoryFilter: 'Bumbu Dapur',
+    bgColor: '#fef3c7',
+    iconName: 'shopping-bag',
+    iconColor: '#d97706',
+    iconType: 'material',
   },
-  name: { fontSize: 15, fontWeight: '700', color: C.onSurface, lineHeight: 20 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' },
-  quantity: { fontSize: 11, color: C.outline, fontWeight: '500' },
-  divider: { height: 1, backgroundColor: C.surfaceContainer, marginVertical: 10 },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
-  btn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
+  {
+    id: 'veggies',
+    name: 'Sayuran',
+    categoryFilter: 'Sayuran',
+    bgColor: '#d1fae5',
+    iconName: 'sprout',
+    iconColor: '#059669',
+    iconType: 'mc',
   },
-  btnDiscard: {
-    borderWidth: 1, borderColor: C.error + '44',
+  {
+    id: 'fruits',
+    name: 'Buah',
+    categoryFilter: 'Buah-buahan',
+    bgColor: '#fce7f3',
+    iconName: 'fruit-grapes',
+    iconColor: '#db2777',
+    iconType: 'mc',
   },
-  btnUse: {
-    backgroundColor: C.secondaryContainer,
-  },
-  btnTxt: { fontSize: 12, fontWeight: '700' },
-});
-
-// ─── Category Filter Chip ─────────────────────────────────────────────────────
-
-function CategoryChip({
-  label, icon, isActive, onPress,
-}: {
-  label: string; icon: MCName; isActive: boolean; onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[ch.chip, isActive && ch.chipActive]}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      <MaterialCommunityIcons
-        name={icon}
-        size={15}
-        color={isActive ? C.onPrimary : C.onSurface}
-      />
-      <Text style={[ch.text, isActive && ch.textActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-const ch = StyleSheet.create({
-  chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12,
-    backgroundColor: C.surfaceLowest,
-    borderWidth: 1, borderColor: C.outlineVariant + '80',
-    marginRight: 8,
-  },
-  chipActive: { backgroundColor: C.primary, borderColor: C.primary },
-  text:       { fontSize: 12, fontWeight: '600', color: C.onSurface },
-  textActive: { color: C.onPrimary },
-});
-
-// ─── Filter Pill ──────────────────────────────────────────────────────────────
-
-type FilterPillProps = {
-  label: string;
-  isActive?: boolean;
-  isUrgent?: boolean;
-  onPress: () => void;
-};
-function FilterPill({ label, isActive, isUrgent, onPress }: FilterPillProps) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
-      style={[
-        fp.pill,
-        isActive && fp.pillActive,
-        isUrgent && fp.pillUrgent,
-      ]}
-    >
-      {isUrgent && <View style={fp.urgentDot} />}
-      <Text style={[fp.text, isActive && fp.textActive, isUrgent && fp.textUrgent]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-const fp = StyleSheet.create({
-  pill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 14, paddingVertical: 6,
-    borderRadius: 99, borderWidth: 1,
-    borderColor: C.outlineVariant,
-    backgroundColor: C.surfaceLowest,
-    marginRight: 8,
-  },
-  pillActive:  { backgroundColor: C.primary, borderColor: C.primary },
-  pillUrgent:  { backgroundColor: C.errorContainer + 'CC', borderColor: C.error + '4D' },
-  urgentDot:   { width: 6, height: 6, borderRadius: 3, backgroundColor: C.error },
-  text:        { fontSize: 12, fontWeight: '600', color: C.onSurfaceVariant },
-  textActive:  { color: C.onPrimary },
-  textUrgent:  { color: C.onErrorContainer, fontWeight: '700' },
-});
-
-// ─── Storage Tip Card ─────────────────────────────────────────────────────────
-
-function StorageTipCard({ tip, onNext }: {
-  tip: typeof STORAGE_TIPS[number];
-  onNext: () => void;
-}) {
-  return (
-    <View style={st.card}>
-      <View style={st.iconCol}>
-        <View style={st.iconWrap}>
-          <MaterialCommunityIcons name={tip.icon as any} size={20} color={C.tertiary} />
-        </View>
-      </View>
-      <View style={{ flex: 1 }}>
-        <View style={st.topRow}>
-          <Text style={st.label}>Tips Penyimpanan Hari Ini</Text>
-          <MaterialCommunityIcons name="bookmark-plus-outline" size={18} color={C.tertiary} />
-        </View>
-        <Text style={st.text}>{tip.tip}</Text>
-        <View style={st.footer}>
-          <TouchableOpacity style={st.nextBtn} onPress={onNext} activeOpacity={0.8}>
-            <Text style={st.nextTxt}>Tips Lainnya</Text>
-            <Feather name="chevron-right" size={13} color={C.tertiary} />
-          </TouchableOpacity>
-          <Text style={st.category}>Kategori: {tip.category}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-const st = StyleSheet.create({
-  card: {
-    flexDirection: 'row', gap: 12,
-    backgroundColor: C.tertiaryFixed + '66',
-    borderRadius: 16, padding: 14,
-    borderWidth: 1, borderColor: C.tertiaryFixedDim + '99',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
-  },
-  iconCol:  { paddingTop: 2 },
-  iconWrap: {
-    width: 36, height: 36, borderRadius: 12,
-    backgroundColor: C.tertiaryContainer + '33',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  label:  { fontSize: 10, fontWeight: '800', color: C.tertiary, textTransform: 'uppercase', letterSpacing: 0.8 },
-  text:   { fontSize: 13, color: C.onSurface, lineHeight: 20 },
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
-  nextBtn:  { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  nextTxt:  { fontSize: 12, fontWeight: '700', color: C.tertiary },
-  category: { fontSize: 11, color: C.onSurfaceVariant, fontWeight: '500' },
-});
-
-// ─── HomeScreen ───────────────────────────────────────────────────────────────
-
-type FilterType = Category | StorageLocation | 'Semua' | 'Kritis';
+];
 
 export default function HomeScreen() {
   const router = useRouter();
   const { data, loading, isRetrying, error, refetch } = useIngredients();
-  // Perubahan status lokal (Gunakan / Buang) disimpan terpisah dari data server
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, IngredientStatus>>({});
-  const ingredients = useMemo<Ingredient[]>(
-    () => (data ?? []).map(i => (statusOverrides[i.id] ? { ...i, status: statusOverrides[i.id] } : i)),
-    [data, statusOverrides],
-  );
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterType>('Semua');
-  const [tipIndex, setTipIndex] = useState(0);
-  const [sortBy] = useState<'expiry' | 'name'>('expiry');
+  const [selectedCategory, setSelectedCategory] = useState<string>('see_all');
+  const [favorites, setFavorites] = useState<Record<string, boolean>>({});
 
-  const active = useMemo(() => ingredients.filter(i => i.status === 'active'), [ingredients]);
+  const urgentCount = useMemo(() => {
+    if (!data) return 0;
+    return data.filter(i => i.status === 'active' && getDaysUntilExpiry(i.expiryDate) <= 2).length;
+  }, [data]);
 
-  const urgentItems = useMemo(() =>
-    active
-      .filter(i => {
-        const s = getFreshnessStatus(i.expiryDate);
-        return s === 'expiring' || s === 'expired';
-      })
-      .sort((a, b) => a.expiryDate.getTime() - b.expiryDate.getTime()),
-  [active]);
-  const urgentCount = urgentItems.length;
-  const urgentNames = urgentItems.slice(0, 2).map(i => i.name).join(' & ');
+  const toggleFavorite = (id: string) => {
+    setFavorites(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
-  const filtered = useMemo(() => {
-    let list = active.filter(i =>
-      i.name.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-    if (activeFilter === 'Kritis') {
-      list = list.filter(i => {
-        const s = getFreshnessStatus(i.expiryDate);
-        return s === 'expiring' || s === 'expired';
+  const apiRecipeTips = useMemo<RecipeTip[]>(() => {
+    if (!data) return [];
+    return data
+      .filter(i => i.status === 'active')
+      .map(i => {
+        const daysLeft = getDaysUntilExpiry(i.expiryDate);
+        const meta = getDeterministicMeta(i.id, i.name);
+        return {
+          id: `ing-${i.id}`,
+          name: `Kreasi ${i.name}`,
+          category: i.category,
+          rating: 4.9,
+          reviewsCount: meta.reviewsCount,
+          cookTime: meta.cookTime,
+          savingLabel: meta.savingLabel,
+          usedIngredients: `${i.name} (${i.storageLocation})`,
+          tipMessage: `Bahan ${i.name} tersisa ${daysLeft <= 0 ? 'hari ini' : `${daysLeft} hari lagi`}. Masak segera agar tidak terbuang sia-sia.`,
+          imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&q=80',
+          matchBadge: daysLeft <= 2 ? 'Segera Masak' : 'Stok Kulkas',
+        };
       });
-    } else if (activeFilter !== 'Semua') {
-      list = list.filter(i =>
-        i.category === activeFilter || i.storageLocation === activeFilter,
+  }, [data]);
+
+  const allTips = useMemo<RecipeTip[]>(() => {
+    const combined = [...DEFAULT_RECIPE_TIPS, ...apiRecipeTips];
+    const map = new Map<string, RecipeTip>();
+    for (const t of combined) {
+      map.set(t.name.toLowerCase(), t);
+    }
+    return Array.from(map.values());
+  }, [apiRecipeTips]);
+
+  const filteredTips = useMemo(() => {
+    let list = allTips;
+    if (selectedCategory !== 'see_all') {
+      const catObj = CIRCULAR_CATEGORIES.find(c => c.id === selectedCategory);
+      if (catObj?.categoryFilter) {
+        list = list.filter(p => p.category === catObj.categoryFilter);
+      }
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        p => p.name.toLowerCase().includes(q) || p.usedIngredients.toLowerCase().includes(q)
       );
     }
-    // Sort by expiry ascending
-    return [...list].sort((a, b) => a.expiryDate.getTime() - b.expiryDate.getTime());
-  }, [active, searchQuery, activeFilter]);
+    return list;
+  }, [allTips, selectedCategory, searchQuery]);
 
-  const handleUse = useCallback((id: string) => {
-    Alert.alert('Tandai Terpakai', 'Bahan ini sudah terpakai?', [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Konfirmasi',
-        onPress: () => setStatusOverrides(p => ({ ...p, [id]: 'used' })),
-      },
-    ]);
-  }, []);
+  const tipPairs = useMemo(() => {
+    const pairs: RecipeTip[][] = [];
+    for (let i = 0; i < filteredTips.length; i += 2) {
+      pairs.push(filteredTips.slice(i, i + 2));
+    }
+    return pairs;
+  }, [filteredTips]);
 
-  const handleDiscard = useCallback((id: string) => {
-    Alert.alert('Buang Bahan', 'Yakin ingin membuang bahan ini?', [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Buang',
-        style: 'destructive',
-        onPress: () => setStatusOverrides(p => ({ ...p, [id]: 'discarded' })),
-      },
-    ]);
-  }, []);
-
-  const currentTip = STORAGE_TIPS[tipIndex];
-
-  const filterOptions: { label: string; value: FilterType }[] = [
-    { label: `Semua (${active.length})`, value: 'Semua' },
-    { label: `Kritis/Segera (<2 hari)`,  value: 'Kritis' },
-    { label: 'Kulkas ❄️',               value: 'Kulkas' },
-    { label: 'Freezer 🧊',              value: 'Freezer' },
-    { label: 'Suhu Ruang',              value: 'Suhu Ruang' },
-    { label: 'Sayuran',                 value: 'Sayuran' },
-    { label: 'Buah',                    value: 'Buah-buahan' },
-  ];
+  const handleOpenRecipeTip = (tip: RecipeTip) => {
+    Alert.alert(
+      tip.name,
+      `💡 Tips Pengolahan Bahan Sisa:\n${tip.tipMessage}\n\n🥗 Bahan yang Dimanfaatkan:\n${tip.usedIngredients}\n\n⏱ Estimasi Memasak: ${tip.cookTime}\n💰 Potensi Hemat: ${tip.savingLabel}`,
+      [
+        { text: 'Tutup', style: 'cancel' },
+        {
+          text: 'Buka Tips & Resep',
+          onPress: () => router.push('/tips'),
+        },
+      ]
+    );
+  };
 
   return (
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
 
-      {/* ── Top App Bar ── */}
-      <SafeAreaView edges={['top']} style={{ backgroundColor: C.surface }}>
-        <View style={s.header}>
-          {/* Avatar + Greeting */}
-          <View style={s.headerLeft}>
-            
-            <View>
-              
-              <View style={s.brandRow}>
-                <Text style={s.brandName}>FreshG</Text>
-                <MaterialCommunityIcons name="leaf" size={18} color={C.primaryContainer} />
-              </View>
+      <SafeAreaView edges={['top']} style={s.topSafeArea}>
+        <TouchableOpacity
+          style={s.locationBar}
+          activeOpacity={0.7}
+          onPress={() => router.push('/lokasi')}
+          accessibilityLabel="Pilih Lokasi"
+        >
+          <View style={s.locationLeft}>
+            <MaterialIcons name="location-on" size={17} color={C.primary} />
+            <Text style={s.locationText} numberOfLines={1}>
+              Add your location first
+            </Text>
+            <Feather name="chevron-right" size={15} color={C.textSecondary} />
+          </View>
+        </TouchableOpacity>
+
+        <View style={s.searchRow}>
+          <TouchableOpacity
+            style={s.filterBtn}
+            activeOpacity={0.8}
+            onPress={() => setSelectedCategory('see_all')}
+            accessibilityLabel="Filter Kategori"
+          >
+            <Feather name="sliders" size={17} color={C.primary} />
+          </TouchableOpacity>
+
+          <View style={s.searchContainer}>
+            <Feather name="search" size={17} color={C.primary} style={s.searchIcon} />
+            <TextInput
+              style={s.searchInput}
+              placeholder="Cari ide resep masakan..."
+              placeholderTextColor={C.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+            />
+          </View>
+
+          <TouchableOpacity
+            style={s.cartBtn}
+            onPress={() => router.push('/notifikasi')}
+            activeOpacity={0.8}
+            accessibilityLabel="Pusat Notifikasi"
+          >
+            <Ionicons name="notifications-outline" size={26} color={C.primary} />
+            <View style={s.cartBadge}>
+              <Text style={s.cartBadgeText}>{urgentCount > 0 ? urgentCount : 1}</Text>
             </View>
-          </View>
-          {/* Header Right Actions */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            {/* LBS Shortcut (Week 10) */}
-            <TouchableOpacity
-              style={s.bellBtn}
-              onPress={() => router.push('/lokasi')}
-              activeOpacity={0.8}
-              accessibilityLabel="Location-Based Services"
-            >
-              <MaterialIcons name="location-on" size={22} color="#0284c7" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={s.bellBtn}
-              onPress={() => router.push('/scan')}
-              activeOpacity={0.8}
-              accessibilityLabel="Scan Barcode Kamera"
-            >
-              <MaterialIcons name="photo-camera" size={22} color={C.primary} />
-            </TouchableOpacity>
-
-            {/* Notification Bell (Week 11: Sprint 09) */}
-            <TouchableOpacity
-              style={s.bellBtn}
-              onPress={() => router.push('/notifikasi')}
-              activeOpacity={0.8}
-              accessibilityLabel="Pusat Notifikasi"
-            >
-              <MaterialIcons name="notifications" size={24} color={C.onSurface} />
-              {urgentCount > 0 && (
-                <View style={s.bellBadge}>
-                  <Text style={s.bellBadgeText}>{urgentCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
 
       <OfflineBanner onRetryAll={refetch} />
 
       <ScrollView
-        style={{ flex: 1, backgroundColor: C.surface }}
+        style={s.scroll}
+        contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 44 }]}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[s.scroll, { paddingBottom: BottomTabInset + 32 }]}
       >
-        
-
-        {/* ── SECTION 2: Shortcut Tugas Praktik Async (Slide 15) ── */}
-        <View style={s.section}>
-          <TouchableOpacity
-            style={s.todoBanner}
-            onPress={() => router.push('/todo')}
-            activeOpacity={0.85}
+        <View style={s.bannerSection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.bannerScroll}
+            snapToInterval={SCREEN_WIDTH * 0.84 + 14}
+            decelerationRate="fast"
           >
-            <View style={s.todoBannerLeft}>
-              <View style={s.todoBadge}>
-                <MaterialIcons name="cloud-sync" size={14} color={C.primary} />
-                <Text style={s.todoBadgeText}>Sprint 05</Text>
+            <View style={s.bannerCard}>
+              <Image
+                source={{ uri: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80' }}
+                style={s.bannerRightImage}
+                contentFit="cover"
+              />
+              <View style={s.bannerLeftBase} />
+              <View style={s.bannerContent}>
+                <Text style={s.bannerTitle}>
+                  {'Fresh Deals,\nFresh Groceries!'}
+                </Text>
+                <Text style={s.bannerSubtitle} numberOfLines={2}>
+                  Up to 50% off on your favorite essentials. Shop now and save big!
+                </Text>
+                <TouchableOpacity
+                  style={s.bannerBtn}
+                  activeOpacity={0.85}
+                  onPress={() => router.push('/todo')}
+                >
+                  <Text style={s.bannerBtnText}>GRAB THE DEALS</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={s.todoBannerTitle}>Daftar Belanja & Todo Async</Text>
-              <Text style={s.todoBannerSubtitle}>
-                6 Fitur Wajib CRUD Asinkron (GET, POST, PATCH, Spinner, Error Handling)
-              </Text>
             </View>
-            <View style={s.todoBannerArrow}>
-              <MaterialIcons name="arrow-forward-ios" size={14} color={C.primary} />
+
+            <View style={[s.bannerCard, { backgroundColor: '#4c0519' }]}>
+              <Image
+                source={{ uri: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=800&q=80' }}
+                style={s.bannerRightImage}
+                contentFit="cover"
+              />
+              <View style={[s.bannerLeftBase, { backgroundColor: '#4c0519' }]} />
+              <View style={s.bannerContent}>
+                <Text style={s.bannerTitle}>
+                  {'Sweet Deals\non Fruits!'}
+                </Text>
+                <Text style={s.bannerSubtitle} numberOfLines={2}>
+                  Enjoy delicious vitamin-packed seasonal fruits. Fresh & crisp every day!
+                </Text>
+                <TouchableOpacity
+                  style={s.bannerBtn}
+                  activeOpacity={0.85}
+                  onPress={() => setSelectedCategory('fruits')}
+                >
+                  <Text style={[s.bannerBtnText, { color: '#881337' }]}>EXPLORE</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </TouchableOpacity>
+          </ScrollView>
         </View>
 
-        {/* ── SECTION 2B: Shortcut LBS & Geofencing (Week 10: Sprint 08) ── */}
-        <View style={s.section}>
-          <TouchableOpacity
-            style={[s.todoBanner, { borderColor: '#7dd3fc', backgroundColor: '#f0f9ff' }]}
-            onPress={() => router.push('/lokasi')}
-            activeOpacity={0.85}
+        <View style={s.categoriesSection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.categoriesScroll}
           >
-            <View style={s.todoBannerLeft}>
-              <View style={[s.todoBadge, { backgroundColor: '#e0f2fe' }]}>
-                <MaterialIcons name="location-on" size={14} color="#0284c7" />
-                <Text style={[s.todoBadgeText, { color: '#0284c7' }]}>Week 10 • Sprint 08</Text>
-              </View>
-              <Text style={s.todoBannerTitle}>Location-Based Services (LBS)</Text>
-              <Text style={s.todoBannerSubtitle}>
-                GPS Tracker, Peta Interaktif, Reverse Geocoding & Geofencing Kampus
-              </Text>
-            </View>
-            <View style={[s.todoBannerArrow, { backgroundColor: '#e0f2fe' }]}>
-              <MaterialIcons name="arrow-forward-ios" size={14} color="#0284c7" />
-            </View>
-          </TouchableOpacity>
+            {CIRCULAR_CATEGORIES.map(cat => {
+              const isActive = selectedCategory === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={s.categoryItem}
+                  activeOpacity={0.75}
+                  onPress={() => setSelectedCategory(cat.id)}
+                >
+                  <View
+                    style={[
+                      s.categoryCircle,
+                      { backgroundColor: cat.bgColor },
+                      isActive ? s.categoryCircleActive : cat.id === 'see_all' ? s.categoryCircleSeeAll : null,
+                    ]}
+                  >
+                    {cat.iconType === 'material' ? (
+                      <MaterialIcons
+                        name={cat.iconName as any}
+                        size={24}
+                        color={cat.iconColor}
+                      />
+                    ) : (
+                      <MaterialCommunityIcons
+                        name={cat.iconName as any}
+                        size={24}
+                        color={cat.iconColor}
+                      />
+                    )}
+                  </View>
+                  <Text
+                    style={[
+                      s.categoryLabel,
+                      isActive && { color: C.primary, fontWeight: '700' },
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
-        {/* ── SECTION 2C: Shortcut Push Notification (Week 11: Sprint 09) ── */}
-        <View style={s.section}>
-          <TouchableOpacity
-            style={[s.todoBanner, { borderColor: '#c084fc', backgroundColor: '#faf5ff' }]}
-            onPress={() => router.push('/notifikasi')}
-            activeOpacity={0.85}
-          >
-            <View style={s.todoBannerLeft}>
-              <View style={[s.todoBadge, { backgroundColor: '#f3e8ff' }]}>
-                <MaterialCommunityIcons name="bell-ring" size={14} color="#9333ea" />
-                <Text style={[s.todoBadgeText, { color: '#9333ea' }]}>Week 11 • Sprint 09</Text>
-              </View>
-              <Text style={s.todoBannerTitle}>Push Notification & Deep Linking</Text>
-              <Text style={s.todoBannerSubtitle}>
-                Push Token, Pengingat Kedaluwarsa, Notifikasi Resep & Navigasi Cepat
-              </Text>
+        <View style={s.gridSection}>
+          <View style={s.gridHeader}>
+            <View>
+              <Text style={s.gridTitle}>Top Picks for You</Text>
+              <Text style={s.gridSubtitle}>Ide resep lezat dari sisa bahan kulkas</Text>
             </View>
-            <View style={[s.todoBannerArrow, { backgroundColor: '#f3e8ff' }]}>
-              <MaterialIcons name="arrow-forward-ios" size={14} color="#9333ea" />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── SECTION 3: Search & Filter ── */}
-        <View style={s.section}>
-          {/* Search bar */}
-          <View style={s.searchWrap}>
-            <Feather name="search" size={18} color={C.outline} />
-            <TextInput
-              style={s.searchInput}
-              placeholder="Cari bahan makanan..."
-              placeholderTextColor={C.outline}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            <TouchableOpacity activeOpacity={0.7}>
-              <MaterialIcons name="tune" size={20} color={C.outline} />
-            </TouchableOpacity>
+            {selectedCategory !== 'see_all' && (
+              <TouchableOpacity
+                onPress={() => setSelectedCategory('see_all')}
+                activeOpacity={0.7}
+              >
+                <Text style={s.resetFilterText}>Lihat Semua</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-        </View>
+          <ApiStateView
+            loading={loading}
+            isRetrying={isRetrying}
+            error={error}
+            isEmpty={!loading && !error && filteredTips.length === 0}
+            emptyTitle={searchQuery ? 'Resep Tidak Ditemukan' : 'Belum Ada Ide Resep'}
+            emptyMessage={
+              searchQuery
+                ? 'Coba gunakan kata kunci bahan sisa yang lain.'
+                : 'Tips olah bahan sisa kulkas akan ditampilkan di sini.'
+            }
+            onRetry={refetch}
+          >
+            <View style={s.gridContainer}>
+              {tipPairs.map((pair, rowIndex) => (
+                <View key={rowIndex} style={s.cardRow}>
+                  {pair.map(tip => {
+                    const isFav = !!favorites[tip.id];
+                    return (
+                      <TouchableOpacity
+                        key={tip.id}
+                        style={s.productCard}
+                        activeOpacity={0.88}
+                        onPress={() => handleOpenRecipeTip(tip)}
+                      >
+                        <View style={s.cardImageWrap}>
+                          <Image
+                            source={{ uri: tip.imageUrl }}
+                            style={s.cardImage}
+                            contentFit="cover"
+                            transition={200}
+                          />
+                          <TouchableOpacity
+                            style={s.favButton}
+                            activeOpacity={0.8}
+                            onPress={() => toggleFavorite(tip.id)}
+                            accessibilityLabel="Favorit"
+                          >
+                            <Ionicons
+                              name={isFav ? 'heart' : 'heart-outline'}
+                              size={15}
+                              color={isFav ? C.accentRed : '#64748b'}
+                            />
+                          </TouchableOpacity>
+                        </View>
 
-        {/* ── SECTION 4: Stok Tersedia ── */}
-        <View style={s.section}>
-          <View style={s.listHeader}>
-            <Text style={s.sectionTitle}>Stok Tersedia</Text>
-            
-          </View>
+                        <View style={s.tagsRow}>
+                          <View style={s.ratingBadge}>
+                            <Ionicons name="star" size={10} color="#ca8a04" />
+                            <Text style={s.ratingText}>
+                              {tip.rating} ({tip.reviewsCount})
+                            </Text>
+                          </View>
+                          <View style={s.timeBadge}>
+                            <Ionicons name="time-outline" size={10} color={C.primary} />
+                            <Text style={s.timeText}>{tip.cookTime}</Text>
+                          </View>
+                        </View>
 
-          <View style={{ gap: 10, marginTop: 10 }}>
-            <ApiStateView
-              loading={loading}
-              isRetrying={isRetrying}
-              error={error}
-              isEmpty={!loading && !error && filtered.length === 0}
-              emptyTitle={searchQuery ? 'Bahan Tidak Ditemukan' : 'Belum Ada Bahan Makanan'}
-              emptyMessage={searchQuery ? 'Coba cari dengan kata kunci lain' : 'Kulkas Anda belum memiliki catatan bahan makanan.'}
-              onRetry={refetch}
-            >
-              {filtered.map(item => (
-                <IngredientCard
-                  key={item.id}
-                  item={item}
-                  onUse={handleUse}
-                  onDiscard={handleDiscard}
-                />
+                        <Text style={s.productName} numberOfLines={1}>
+                          {tip.name}
+                        </Text>
+
+                        <View style={s.cardFooter}>
+                          <Text style={s.savingText} numberOfLines={1}>
+                            {tip.savingLabel}
+                          </Text>
+                          <View style={s.btnAction}>
+                            <MaterialCommunityIcons name="silverware-fork-knife" size={14} color={C.primary} />
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  {pair.length === 1 && <View style={[s.productCard, { opacity: 0 }]} />}
+                </View>
               ))}
-            </ApiStateView>
-          </View>
-        </View>
-
-        {/* ── SECTION 5: Storage Tips ── */}
-        <View style={s.section}>
-          <StorageTipCard
-            tip={currentTip}
-            onNext={() => setTipIndex((tipIndex + 1) % STORAGE_TIPS.length)}
-          />
+            </View>
+          </ApiStateView>
         </View>
       </ScrollView>
     </View>
   );
 }
 
-// ─── Main Styles ──────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surface },
-  scroll: { paddingHorizontal: 16, paddingTop: 8 },
-
-  // ── Header ──
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
+  root: {
+    flex: 1,
+    backgroundColor: C.background,
+  },
+  topSafeArea: {
     backgroundColor: C.surface,
-    borderBottomWidth: 1, borderBottomColor: C.surfaceContainer,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 2, elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: C.borderLight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 2,
+    paddingTop: Platform.OS === 'android' ? 14 : 10,
+    paddingBottom: 12,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatarWrap: { position: 'relative' },
-  avatar: {
-    width: 40, height: 40, borderRadius: 20,
-    borderWidth: 2, borderColor: C.primaryContainer + '44',
-  },
-  onlineDot: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 12, height: 12, borderRadius: 6,
-    backgroundColor: C.primaryContainer,
-    borderWidth: 2, borderColor: C.surfaceLowest,
-  },
-  greeting:  { fontSize: 11, color: C.onSurfaceVariant, fontWeight: '500' },
-  brandRow:  { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  brandName: { fontSize: 20, fontWeight: '800', color: C.primary, letterSpacing: -0.4 },
-  bellBtn:   { padding: 8, borderRadius: 99, position: 'relative' },
-  bellBadge: {
-    position: 'absolute', top: 4, right: 4,
-    minWidth: 18, height: 18, borderRadius: 9,
-    backgroundColor: C.error,
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2, borderColor: C.surface,
-  },
-  bellBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
 
-  // ── Smart Reminder ──
-  reminderCard: {
-    flexDirection: 'row', gap: 12,
-    backgroundColor: C.errorContainer + 'CC',
-    borderRadius: 16, padding: 14, marginTop: 12,
-    borderWidth: 1, borderColor: C.error + '33',
-    overflow: 'hidden',
+  locationBar: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
-  reminderIconWrap: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: C.error + '26',
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  reminderTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  reminderChip: { fontSize: 10, fontWeight: '800', color: C.error, letterSpacing: 0.8 },
-  reminderBadge: {
-    backgroundColor: C.error + '1A', borderRadius: 99,
-    paddingHorizontal: 8, paddingVertical: 2,
-  },
-  reminderBadgeText: { fontSize: 10, fontWeight: '700', color: C.error },
-  reminderTitle: { fontSize: 14, fontWeight: '800', color: C.onSurface, marginTop: 2, lineHeight: 20 },
-  reminderSub:   { fontSize: 12, color: C.onSurfaceVariant, lineHeight: 17, marginTop: 3 },
-  reminderFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  reminderLink: { fontSize: 12, fontWeight: '700', color: C.error },
-  reminderSave: { fontSize: 11, color: C.outline, fontWeight: '500' },
-
-  // ── Sections ──
-  section:       { marginTop: 16 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  sectionTitle:  { fontSize: 16, fontWeight: '700', color: C.onSurface },
-  autoLabel:     { fontSize: 12, fontWeight: '700', color: C.primary },
-
-  // ── Add Button ──
-  addBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: C.primary, borderRadius: 14,
-    paddingHorizontal: 16, paddingVertical: 13,
-    shadowColor: C.primary, shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3, shadowRadius: 6, elevation: 5,
-  },
-  addBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  addBtnIcon: {
-    width: 28, height: 28, borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  addBtnText: { fontSize: 16, fontWeight: '700', color: C.onPrimary, letterSpacing: 0.2 },
-
-  // ── Info box ──
-  infoBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: C.secondaryContainer + '4D',
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
-    borderWidth: 1, borderColor: C.secondaryContainer + '99',
-    marginTop: 10,
-  },
-  infoText: { flex: 1, fontSize: 12, color: C.onSecondaryContainer, lineHeight: 17 },
-
-  // ── Search ──
-  searchWrap: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: C.surfaceLowest, borderRadius: 14,
-    paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 13 : 10,
-    borderWidth: 1.5, borderColor: C.outlineVariant,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 3, elevation: 2,
-  },
-  searchInput: { flex: 1, fontSize: 15, color: C.onSurface, padding: 0 },
-
-  // ── List header ──
-  listHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sortLabel: { fontSize: 12, color: C.outline },
-  sortValue: { fontSize: 12, fontWeight: '700', color: C.onSurface },
-
-  // ── Empty ──
-  empty:      { alignItems: 'center', paddingVertical: 48, gap: 8 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: '#374151' },
-  emptySub:   { fontSize: 14, color: '#9ca3af', textAlign: 'center' },
-
-  // ── Todo Banner ──
-  todoBanner: {
+  locationLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: C.surfaceLowest,
-    borderRadius: 14,
-    padding: 14,
+    gap: 6,
+  },
+  locationText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: C.textPrimary,
+  },
+
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    gap: 8,
+    marginTop: 2,
+  },
+  filterBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1.2,
+    borderColor: '#bbf7d0',
+    backgroundColor: '#f0fdf4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 42,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.2,
+    borderColor: '#e2e8f0',
+    borderRadius: 21,
+    paddingHorizontal: 12,
+  },
+  searchIcon: {
+    marginRight: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: C.textPrimary,
+    paddingVertical: 0,
+  },
+  cameraBtn: {
+    padding: 4,
+  },
+  cartBtn: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: 1,
+    right: 2,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 9,
+    backgroundColor: C.accentRed,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
     borderWidth: 1.5,
-    borderColor: C.primary + '33',
-    shadowColor: C.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    borderColor: '#ffffff',
+  },
+  cartBadgeText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+
+  scroll: {
+    flex: 1,
+    backgroundColor: C.background,
+  },
+  scrollContent: {
+    paddingTop: 14,
+  },
+
+  bannerSection: {
+    marginBottom: 20,
+  },
+  bannerScroll: {
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  bannerCard: {
+    width: SCREEN_WIDTH > 420 ? 340 : SCREEN_WIDTH * 0.85,
+    height: 155,
+    borderRadius: 22,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#064e3b',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     elevation: 3,
   },
-  todoBannerLeft: {
-    flex: 1,
-    marginRight: 8,
+  bannerRightImage: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: '56%',
   },
-  todoBadge: {
+  bannerLeftBase: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: '52%',
+    backgroundColor: '#064e3b',
+  },
+  bannerContent: {
+    width: '68%',
+    height: '100%',
+    paddingLeft: 18,
+    paddingVertical: 14,
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  bannerTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#ffffff',
+    lineHeight: 24,
+    letterSpacing: -0.3,
+  },
+  bannerSubtitle: {
+    fontSize: 11,
+    color: '#d1fae5',
+    marginTop: 4,
+    marginBottom: 12,
+    lineHeight: 16,
+    maxWidth: '90%',
+  },
+  bannerBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  bannerBtnText: {
+    color: '#064e3b',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+
+  categoriesSection: {
+    marginBottom: 20,
+  },
+  categoriesScroll: {
+    paddingHorizontal: 16,
+    gap: 16,
+  },
+  categoryItem: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  categoryCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  categoryCircleSeeAll: {
+    borderColor: '#16a34a',
+    borderWidth: 1.8,
+  },
+  categoryCircleActive: {
+    borderColor: C.primary,
+    borderWidth: 2,
+  },
+  categoryLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: C.textSecondary,
+  },
+
+  gridSection: {
+    paddingHorizontal: 16,
+  },
+  gridHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.secondaryContainer + '55',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 4,
-    marginBottom: 6,
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  todoBadgeText: {
-    fontSize: 10,
+  gridTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: C.textPrimary,
+    letterSpacing: -0.3,
+  },
+  gridSubtitle: {
+    fontSize: 11,
+    color: C.textSecondary,
+    marginTop: 2,
+  },
+  resetFilterText: {
+    fontSize: 12,
     fontWeight: '700',
     color: C.primary,
   },
-  todoBannerTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: C.onSurface,
+  gridContainer: {
+    width: '100%',
   },
-  todoBannerSubtitle: {
-    fontSize: 11,
-    color: C.outline,
+  cardRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  productCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardImageWrap: {
+    width: '100%',
+    height: 118,
+    borderRadius: 13,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#f8fafc',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  favButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.tagYellowBg,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 2,
+  },
+  ratingText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: C.tagYellowText,
+  },
+  timeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.tagGreenBg,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 2,
+  },
+  timeText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: C.tagGreenText,
+  },
+  productName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: C.textPrimary,
     marginTop: 2,
-    lineHeight: 15,
+    lineHeight: 18,
   },
-  todoBannerArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: C.surfaceContainer,
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#f8fafc',
+  },
+  savingText: {
+    fontSize: 11,
+    color: C.textPrimary,
+    fontWeight: '800',
+    flex: 1,
+  },
+  btnAction: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: '#f0fdf4',
     alignItems: 'center',
     justifyContent: 'center',
   },

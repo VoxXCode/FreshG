@@ -1,6 +1,3 @@
-/**
- * FreshG / PresidentKu – Location & Geofencing Types (Week 10: Sprint 08)
- */
 import type * as Location from 'expo-location';
 
 export interface LocationCoordinates {
@@ -28,7 +25,7 @@ export interface GeofenceArea {
   name: string;
   latitude: number;
   longitude: number;
-  radius: number; // in meters
+  radius: number;
   description: string;
 }
 
@@ -36,7 +33,7 @@ export type GeofenceEvent = 'enter' | 'exit' | null;
 
 export interface BatteryOptimizationConfig {
   accuracy: Location.Accuracy;
-  timeInterval: number; // in ms
-  distanceInterval: number; // in meters
+  timeInterval: number;
+  distanceInterval: number;
 }
 

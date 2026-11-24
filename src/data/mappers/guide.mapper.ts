@@ -1,6 +1,3 @@
-/**
- * MAPPER – GuideDTO → Guide
- */
 import type { GuideDTO } from '@/data/dto/guide.dto';
 import type { Guide, GuideTheme } from '@/types/guide';
 

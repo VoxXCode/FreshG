@@ -1,12 +1,3 @@
-/**
- * FreshG – Sensor Perangkat Screen (Week 7: Sprint 06 - Accelerometer & Sensor API)
- *
- * Mengimplementasikan:
- * 1. Koneksi hardware Accelerometer real-time (Task 01)
- * 2. Tampilan metrik numerik X, Y, Z dan grafik perubahan nilai (Task 02)
- * 3. Sensor Interaction: Deteksi goyang (Shake Detection) & getaran (Task 03)
- * 4. Fitur Tematik FreshG: "Shake to Surprise Recipe" (Kocok HP untuk rekomendasi resep)
- */
 import { useState, useMemo, useCallback } from 'react';
 import {
   View,
@@ -24,7 +15,6 @@ import { useMotionSensor } from '@/hooks/use-motion-sensor';
 import { useRecipes } from '@/hooks/use-recipes';
 import type { Recipe } from '@/types/recipe';
 
-// ─── Design Tokens ─────────────────────────────────────────────────────────────
 const C = {
   primary:            '#006c49',
   primaryContainer:   '#10b981',
@@ -40,9 +30,9 @@ const C = {
   outlineVariant:     '#bbcabf',
   error:              '#ba1a1a',
   errorContainer:     '#ffdad6',
-  axisX:              '#dc2626', // Merah untuk Sumbu X
-  axisY:              '#16a34a', // Hijau untuk Sumbu Y
-  axisZ:              '#2563eb', // Biru untuk Sumbu Z
+  axisX:              '#dc2626',
+  axisY:              '#16a34a',
+  axisZ:              '#2563eb',
 };
 
 export default function SensorScreen() {
@@ -50,14 +40,12 @@ export default function SensorScreen() {
   const { data: recipes } = useRecipes();
   const [surpriseRecipe, setSurpriseRecipe] = useState<Recipe | null>(null);
 
-  // Fungsi pengacak resep saat goyang terdeteksi (Shake to Surprise Recipe)
   const handleShakeAction = useCallback(() => {
     if (!recipes || recipes.length === 0) return;
     const randomIndex = Math.floor(Math.random() * recipes.length);
     setSurpriseRecipe(recipes[randomIndex]);
   }, [recipes]);
 
-  // Hook sensor akselerometer dengan interval 100ms
   const {
     data,
     history,
@@ -74,7 +62,6 @@ export default function SensorScreen() {
     onShake: handleShakeAction,
   });
 
-  // Pilih resep default pertama jika belum ada yang dikocok
   const currentRecipe = useMemo(() => {
     if (surpriseRecipe) return surpriseRecipe;
     return recipes?.[0] ?? null;
@@ -84,7 +71,6 @@ export default function SensorScreen() {
     <SafeAreaView edges={['top']} style={s.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
 
-      {/* ── Top App Bar ── */}
       <View style={s.appBar}>
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
           <MaterialIcons name="arrow-back" size={24} color={C.onSurface} />
@@ -103,7 +89,6 @@ export default function SensorScreen() {
       </View>
 
       <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* ── Status Banner (Slide 3 & 6) ── */}
         <View style={s.statusCard}>
           <View style={s.statusHeader}>
             <View style={s.statusLeft}>
@@ -127,9 +112,7 @@ export default function SensorScreen() {
           )}
         </View>
 
-        {/* ── 3 Sumbu Metric Cards (Slide 6, 9, 10, 11) ── */}
         <View style={s.metricsRow}>
-          {/* Sumbu X */}
           <View style={[s.metricCard, { borderTopColor: C.axisX }]}>
             <Text style={[s.axisTitle, { color: C.axisX }]}>Sumbu X</Text>
             <Text style={s.axisSub}>Kiri - Kanan</Text>
@@ -148,7 +131,6 @@ export default function SensorScreen() {
             </View>
           </View>
 
-          {/* Sumbu Y */}
           <View style={[s.metricCard, { borderTopColor: C.axisY }]}>
             <Text style={[s.axisTitle, { color: C.axisY }]}>Sumbu Y</Text>
             <Text style={s.axisSub}>Atas - Bawah</Text>
@@ -167,7 +149,6 @@ export default function SensorScreen() {
             </View>
           </View>
 
-          {/* Sumbu Z */}
           <View style={[s.metricCard, { borderTopColor: C.axisZ }]}>
             <Text style={[s.axisTitle, { color: C.axisZ }]}>Sumbu Z</Text>
             <Text style={s.axisSub}>Depan - Belakang</Text>
@@ -187,7 +168,6 @@ export default function SensorScreen() {
           </View>
         </View>
 
-        {/* ── Real-time Value Changes Visualizer (Slide 6, 8, 9, 10) ── */}
         <View style={s.chartCard}>
           <View style={s.chartHeader}>
             <Text style={s.chartTitle}>Grafik Perubahan Nilai Real-time</Text>
@@ -207,7 +187,6 @@ export default function SensorScreen() {
             </View>
           </View>
 
-          {/* Sumbu visualizer bars */}
           <View style={s.graphBarsWrap}>
             {history.map((pt, index) => (
               <View key={index} style={s.graphColumn}>
@@ -244,7 +223,6 @@ export default function SensorScreen() {
           <Text style={s.graphFooterTxt}>Magnitudo Total Akselerasi: {magnitude.toFixed(2)} G</Text>
         </View>
 
-        {/* ── Task 03: Sensor Interaction (Shake Detection & Surprise Recipe) ── */}
         <View style={[s.shakeSection, isShaking && s.shakeSectionActive]}>
           <View style={s.shakeHeader}>
             <View style={s.shakeHeaderLeft}>
@@ -271,7 +249,6 @@ export default function SensorScreen() {
             </View>
           </View>
 
-          {/* Tombol Simulasi Goyang untuk Pengujian/Demo */}
           <TouchableOpacity
             style={s.simulateBtn}
             onPress={simulateShake}
@@ -281,7 +258,6 @@ export default function SensorScreen() {
             <Text style={s.simulateBtnTxt}>Simulasikan Goyang Handphone (Test Shake)</Text>
           </TouchableOpacity>
 
-          {/* Hasil Resep Terkocok */}
           {currentRecipe && (
             <View style={s.recipeCard}>
               <Text style={s.recipeBadge}>🎉 Resep Terpilih dari Kocokan Anda</Text>
@@ -301,7 +277,6 @@ export default function SensorScreen() {
           )}
         </View>
 
-        {/* ── Tautan ke Sensor Kamera ── */}
         <TouchableOpacity
           style={s.cameraCardLink}
           onPress={() => router.push('/scan')}
@@ -323,7 +298,6 @@ export default function SensorScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   safeArea: {
     flex: 1,

@@ -1,7 +1,3 @@
-/**
- * Application Data – Resep
- * Model yang dipakai langsung oleh UI (camelCase, tipe sudah sesuai).
- */
 import type { StorageLocation } from './ingredient';
 
 export interface Recipe {
@@ -16,6 +12,6 @@ export interface Recipe {
   sourceLocation: StorageLocation;
   ingredientsTotal: number;
   ingredientsAvailable: number;
-  estimatedSaving: number; // Rupiah
+  estimatedSaving: number;
   isFeatured: boolean;
 }

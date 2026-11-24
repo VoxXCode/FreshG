@@ -1,14 +1,3 @@
-/**
- * API State Components – FreshG (Sprint 05: UI States & Error Handling)
- *
- * Mengimplementasikan 5 kondisi state sesuai panduan Sprint 05 (Slide 3 & 5):
- * 1. Loading State (Memuat data... / Mencoba lagi...)
- * 2. Success State (Menampilkan konten anak / children)
- * 3. Error State (Pesan error HTTP 4xx, 5xx, atau network)
- * 4. Empty State (Tampilan ketika tidak ada data)
- * 5. Offline & Timeout State (Ikon wifi mati / jam timeout)
- * Dilengkapi tombol "Coba Lagi" (Retry Mechanism) di setiap kondisi gagal.
- */
 import React from 'react';
 import {
   View,
@@ -20,7 +9,6 @@ import {
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { ApiError } from '@/types/api-error';
 
-// ─── Design Tokens ─────────────────────────────────────────────────────────────
 const C = {
   primary:            '#006c49',
   onPrimary:          '#ffffff',
@@ -37,7 +25,6 @@ const C = {
   tertiaryContainer:  '#ffddb8',
 };
 
-// ─── 1. Loading State View ────────────────────────────────────────────────────
 export function LoadingStateView({
   isRetrying = false,
   message,
@@ -58,7 +45,6 @@ export function LoadingStateView({
   );
 }
 
-// ─── 2. Error State View (4xx, 5xx, Network) ──────────────────────────────────
 export function ErrorStateView({
   error,
   onRetry,
@@ -71,7 +57,6 @@ export function ErrorStateView({
   const isTimeout = isApiErr && error.type === 'TIMEOUT';
   const statusCode = isApiErr ? error.statusCode : undefined;
 
-  // Judul & Ikon dinamis sesuai jenis error (Slide 9 & 10)
   let title = 'Gagal Mengambil Data';
   let iconName: 'error' | 'wifi-off' | 'access-time' = 'error';
   let defaultMsg = 'Terjadi kesalahan pada server. Silakan coba lagi.';
@@ -118,7 +103,6 @@ export function ErrorStateView({
   );
 }
 
-// ─── 3. Empty State View ──────────────────────────────────────────────────────
 export function EmptyStateView({
   title = 'Belum Ada Data',
   message = 'Belum ada data yang tersedia saat ini.',
@@ -149,7 +133,6 @@ export function EmptyStateView({
   );
 }
 
-// ─── 4. Boundary Wrapper Component ───────────────────────────────────────────
 export interface ApiStateViewProps {
   loading: boolean;
   isRetrying?: boolean;
@@ -186,7 +169,6 @@ export function ApiStateView({
   return <>{children}</>;
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container: {
     paddingVertical: 36,
@@ -239,7 +221,7 @@ const s = StyleSheet.create({
     backgroundColor: C.error,
   },
   iconBadgeOffline: {
-    backgroundColor: '#7c3aed', // Ungu khas indikator koneksi di slide 11
+    backgroundColor: '#7c3aed',
   },
   iconBadgeEmpty: {
     width: 68,

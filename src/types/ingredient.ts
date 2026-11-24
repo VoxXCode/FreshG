@@ -1,7 +1,3 @@
-/**
- * Types and constants for FreshG ingredient management
- */
-
 export type Category =
   | 'Sayuran'
   | 'Buah-buahan'
@@ -24,10 +20,10 @@ export interface Ingredient {
   storageLocation: StorageLocation;
   addedDate: Date;
   expiryDate: Date;
-  totalDays: number; // total estimated shelf life in days
+  totalDays: number;
   status: IngredientStatus;
   quantity?: string;
-  note?: string; // catatan penyimpanan, mis. "Crisper drawer sayur"
+  note?: string;
 }
 
 export const CATEGORIES: Category[] = [
@@ -114,7 +110,6 @@ export const STORAGE_TIPS: { category: string; tip: string; icon: string }[] = [
   },
 ];
 
-/** Estimated shelf-life in days per category × storage location */
 export const DEFAULT_EXPIRY_DAYS: Record<Category, Record<StorageLocation, number>> = {
   'Sayuran':         { Kulkas: 7,   Freezer: 90,  'Suhu Ruang': 3,   Lemari: 2   },
   'Buah-buahan':     { Kulkas: 10,  Freezer: 60,  'Suhu Ruang': 5,   Lemari: 3   },

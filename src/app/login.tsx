@@ -1,12 +1,3 @@
-/**
- * FreshG – Login Screen (Week 5: Sprint 04 - Task 01)
- *
- * Mengimplementasikan:
- * - Form input email & password
- * - Autentikasi API berbasis Token (JWT / Bearer)
- * - Penyimpanan token aman (SecureStore)
- * - Transisi ke status authenticated
- */
 import { useState } from 'react';
 import {
   View,
@@ -25,7 +16,6 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/use-auth';
 
-// ─── Design Tokens (Konsisten dengan FreshG) ──────────────────────────────────
 const C = {
   primary:            '#006c49',
   primaryContainer:   '#10b981',
@@ -56,7 +46,6 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Fungsi pengisi otomatis untuk kemudahan demo saat penilaian
   const handleQuickFillDemo = () => {
     setEmail('sari.rahmawati@email.com');
     setPassword('password123');
@@ -95,7 +84,6 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Brand Header */}
           <View style={s.brandSection}>
             <View style={s.brandLogoWrap}>
               <MaterialCommunityIcons name="leaf" size={32} color={C.primary} />
@@ -106,7 +94,6 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          {/* Welcome Message */}
           <View style={s.headerSection}>
             <Text style={s.welcomeTitle}>Selamat Datang Kembali</Text>
             <Text style={s.welcomeSub}>
@@ -114,9 +101,7 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          {/* Form Card */}
           <View style={s.formCard}>
-            {/* Error Banner */}
             {errorMessage && (
               <View style={s.errorBanner}>
                 <MaterialIcons name="error-outline" size={20} color={C.error} />
@@ -124,7 +109,6 @@ export default function LoginScreen() {
               </View>
             )}
 
-            {/* Email Field */}
             <View style={s.inputGroup}>
               <Text style={s.inputLabel}>Alamat Email</Text>
               <View style={s.inputContainer}>
@@ -143,7 +127,6 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* Password Field */}
             <View style={s.inputGroup}>
               <Text style={s.inputLabel}>Kata Sandi</Text>
               <View style={s.inputContainer}>
@@ -172,7 +155,6 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* Quick Demo Credentials Button */}
             <TouchableOpacity
               style={s.demoBtn}
               onPress={handleQuickFillDemo}
@@ -183,7 +165,6 @@ export default function LoginScreen() {
               <Text style={s.demoBtnText}>Isi Otomatis Akun Demo (Sari Rahmawati)</Text>
             </TouchableOpacity>
 
-            {/* Login Action Button */}
             <TouchableOpacity
               style={[s.loginBtn, isLoading && s.loginBtnDisabled]}
               onPress={handleLogin}
@@ -204,7 +185,6 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Security & Token Info Footer */}
           <View style={s.securityBadge}>
             <MaterialIcons name="security" size={16} color={C.onSecondaryContainer} />
             <Text style={s.securityBadgeTxt}>
@@ -217,7 +197,6 @@ export default function LoginScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   safeArea: {
     flex: 1,

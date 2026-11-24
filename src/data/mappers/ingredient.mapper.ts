@@ -1,13 +1,3 @@
-/**
- * MAPPER – IngredientDTO → Ingredient
- *
- * Mapping data      : snake_case (server)  → camelCase (aplikasi)
- * Data transformation:
- *   - id number           → string
- *   - tanggal string ISO  → Date
- *   - null                → undefined
- *   - string bebas        → union type yang valid (dengan fallback)
- */
 import type { IngredientDTO } from '@/data/dto/ingredient.dto';
 import {
   CATEGORIES,

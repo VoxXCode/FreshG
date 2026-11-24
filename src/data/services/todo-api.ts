@@ -1,16 +1,3 @@
-/**
- * Todo API Service – FreshG
- * Mengimplementasikan pemanggilan REST API online secara nyata menggunakan fetch() & async/await
- * Berdasarkan rekomendasi Week 9 PPT (Slide 8, 10, 14, 15)
- *
- * Host: https://jsonplaceholder.typicode.com
- * Endpoints:
- * - GET   /todos?_limit=10  (Slide 15 - Fitur 01: Tampilkan Data API)
- * - POST  /todos            (Slide 15 - Fitur 03: Menambahkan Todo)
- * - PATCH /todos/:id        (Slide 15 - Fitur 04: Ubah Status Tugas)
- * - DELETE /todos/:id       (Operasi Hapus CRUD)
- */
-
 import { TodoItem, NewTodoInput } from '@/types/todo';
 
 const BASE_URL = 'https://jsonplaceholder.typicode.com';
@@ -26,9 +13,6 @@ export class TodoApiError extends Error {
   }
 }
 
-/**
- * Helper untuk timeout fetch request
- */
 async function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
@@ -54,10 +38,6 @@ async function fetchWithTimeout(
 }
 
 export const todoApi = {
-  /**
-   * Fitur 01 (Slide 15): GET /todos?_limit=10
-   * Mengambil daftar tugas/belanjaan dari REST API eksternal
-   */
   getTodos: async (limit: number = 10, signal?: AbortSignal): Promise<TodoItem[]> => {
     console.log(`[TodoApi] [GET] ${BASE_URL}/todos?_limit=${limit}`);
 
@@ -80,10 +60,6 @@ export const todoApi = {
     return data;
   },
 
-  /**
-   * Fitur 03 (Slide 15): POST /todos
-   * Mengirim tugas/item belanjaan baru ke REST API
-   */
   createTodo: async (input: NewTodoInput): Promise<TodoItem> => {
     console.log(`[TodoApi] [POST] ${BASE_URL}/todos`, input);
 
@@ -111,10 +87,6 @@ export const todoApi = {
     return created;
   },
 
-  /**
-   * Fitur 04 (Slide 15): PATCH /todos/:id
-   * Mengubah status selesai tugas secara dinamis di server
-   */
   patchTodoStatus: async (id: number, completed: boolean): Promise<TodoItem> => {
     console.log(`[TodoApi] [PATCH] ${BASE_URL}/todos/${id}`, { completed });
 
@@ -138,10 +110,6 @@ export const todoApi = {
     return updated;
   },
 
-  /**
-   * Operasi DELETE /todos/:id
-   * Menghapus tugas dari server
-   */
   deleteTodo: async (id: number): Promise<boolean> => {
     console.log(`[TodoApi] [DELETE] ${BASE_URL}/todos/${id}`);
 

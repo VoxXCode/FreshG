@@ -1,12 +1,3 @@
-/**
- * FreshG Push Notification Service
- * Mengimplementasikan Task 01, Task 02, dan Task 03 (Week 11 Slide 11 - 15)
- *
- * Task 01: Register Device for Notification (Permission & Expo Push Token)
- * Task 02: Send Push Notification (Expo Push HTTP API & Local OS Notifications)
- * Task 03: Handle Notification Response (Payload Extraction & Deep Linking)
- */
-
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
@@ -17,14 +8,10 @@ import type {
   PushTokenRegistrationResult,
 } from '@/types/notification';
 
-// Deteksi lingkungan Expo Go vs Development Build
 const isExpoGo =
   Constants.appOwnership === 'expo' ||
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
-// ── Konfigurasi Foreground Notification Handler (Slide 9 & 11) ───────────────
-// Mengatur agar notifikasi muncul sebagai Heads-up Pop-up Banner di atas layar HP
-// meskipun aplikasi sedang terbuka di foreground.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
@@ -36,11 +23,6 @@ Notifications.setNotificationHandler({
 });
 
 export const notificationService = {
-  /**
-   * Mengatur Android Notification Channel dengan prioritas tertinggi (MAX)
-   * Catatan: Di Expo Go Android (SDK 53+), channel provider native tidak terpasang di client Expo Go.
-   * Hanya dipanggil jika berjalan di Standalone / Development Build.
-   */
   setupNotificationChannelAsync: async (): Promise<void> => {
     if (Platform.OS === 'android' && !isExpoGo) {
       try {
@@ -61,10 +43,6 @@ export const notificationService = {
     }
   },
 
-  /**
-   * Meminta Izin Notifikasi Langsung ke Sistem Operasi Perangkat (Slide 8)
-   * Menampilkan dialog native Android / iOS ("Izinkan FreshG mengirim notifikasi?").
-   */
   requestDevicePermissions: async (): Promise<boolean> => {
     await notificationService.setupNotificationChannelAsync();
 
@@ -91,14 +69,9 @@ export const notificationService = {
     }
   },
 
-  /**
-   * TASK 01: Registrasi Perangkat & Mengambil Push Token (Slide 6, 8, 11, 12)
-   */
   registerForPushNotificationsAsync: async (): Promise<PushTokenRegistrationResult> => {
-    // 1. Android Notification Channel (Slide 8)
     await notificationService.setupNotificationChannelAsync();
 
-    // 2. Runtime Permission Handling ke Sistem Device (Slide 8)
     const isGranted = await notificationService.requestDevicePermissions();
 
     if (!isGranted) {
@@ -111,7 +84,6 @@ export const notificationService = {
       };
     }
 
-    // 3. Cek apakah berjalan di Simulator/Emulator (Slide 6 & 12)
     if (!Device.isDevice) {
       console.log('[NotificationService] Berjalan di Simulator/Emulator.');
       const fallbackToken = 'ExponentPushToken[SIMULATOR_TEST_TOKEN_FRESHG]';
@@ -123,9 +95,6 @@ export const notificationService = {
       };
     }
 
-    // 4. Penanganan Khusus Expo Go di Android (SDK 53+):
-    // Expo Go Android tidak mendukung remote push token cloud,
-    // namun mendukung 100% notifikasi sistem perangkat (status bar & lock screen) dan deep linking.
     if (isExpoGo && Platform.OS === 'android') {
       const deviceModel = (Device.modelName || 'ANDROID_DEVICE').replace(/[^a-zA-Z0-9]/g, '_');
       const localToken = `ExponentPushToken[EXPO_GO_${deviceModel}_LOCAL]`;
@@ -141,7 +110,6 @@ export const notificationService = {
       };
     }
 
-    // 5. Perangkat Fisik (Development Build / Standalone APK / iOS) (Slide 6 & 11)
     try {
       const projectId =
         Constants?.expoConfig?.extra?.eas?.projectId ??
@@ -154,7 +122,6 @@ export const notificationService = {
       const token = tokenData.data;
       console.log('[NotificationService] Expo Push Token berhasil didapatkan:', token);
 
-      // Simpan Token ke Backend Server (Slide 6 & 12)
       await notificationService.savePushTokenToBackend(token);
 
       return {
@@ -179,13 +146,9 @@ export const notificationService = {
     }
   },
 
-  /**
-   * TASK 01: Simpan Push Token ke Backend Server (Slide 6 & 12)
-   */
   savePushTokenToBackend: async (token: string): Promise<boolean> => {
     try {
       console.log('[NotificationService] Mengirim push token ke backend server FreshG:', token);
-      // Di produksi: await fetch('https://api.freshg.com/users/device-token', { method: 'POST', body: ... })
       return true;
     } catch (error) {
       console.log('[NotificationService] Log simpan token:', error);
@@ -193,16 +156,12 @@ export const notificationService = {
     }
   },
 
-  /**
-   * TASK 02: Kirim Push Notification via Expo HTTP API (Slide 7 & 13)
-   */
   sendPushNotification: async (
     targetToken: string,
     title: string,
     body: string,
     data: NotificationPayloadData = {}
   ): Promise<{ success: boolean; data?: unknown; error?: string }> => {
-    // Jika token adalah token lokal Expo Go, lewati pengiriman cloud HTTP API
     if (targetToken.includes('EXPO_GO') || targetToken.includes('LOCAL')) {
       console.log('[NotificationService] Token pengujian lokal. Menggunakan notifikasi sistem perangkat langsung.');
       return { success: true, data: { status: 'ok', info: 'Local system notification delivered' } };
@@ -239,10 +198,6 @@ export const notificationService = {
     }
   },
 
-  /**
-   * TASK 02: Kirim Notifikasi Sistem Perangkat (Direct / Schedule) (Slide 13 & 15)
-   * Memunculkan notifikasi nyata di Notification Shade / Status Bar dan Lock Screen HP.
-   */
   scheduleLocalNotification: async (
     title: string,
     body: string,
@@ -280,9 +235,6 @@ export const notificationService = {
     }
   },
 
-  /**
-   * TASK 03: Ekstraksi Data Payload & Tujuan Navigasi Deep Linking (Slide 10 & 14)
-   */
   extractNavigationTarget: (response: Notifications.NotificationResponse): string => {
     const data = response?.notification?.request?.content?.data as NotificationPayloadData | undefined;
     if (data?.screen && typeof data.screen === 'string') {

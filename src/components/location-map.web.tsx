@@ -1,7 +1,3 @@
-/**
- * FreshG / PresidentKu – Location Map Component (Web platform)
- * Render via iframe yang interaktif dengan Leaflet OpenStreetMap.
- */
 import { useRef, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
@@ -54,7 +50,6 @@ export default function LocationMap({
 
   return (
     <View style={[styles.container, { height }]}>
-      {/* Web IFrame */}
       {/* @ts-ignore */}
       <iframe
         ref={iframeRef}
@@ -68,7 +63,6 @@ export default function LocationMap({
         title="Interactive Location Map"
       />
 
-      {/* ── Overlay Badge Lokasi (Slide 8 & 13) ── */}
       <View style={styles.overlayBadge}>
         <View style={styles.badgeDot} />
         <View>
@@ -81,7 +75,6 @@ export default function LocationMap({
         </View>
       </View>
 
-      {/* ── Floating Map Controls (+, -, re-center) ── */}
       <View style={styles.controlsCol}>
         <TouchableOpacity style={styles.ctrlBtn} onPress={handleCenterUser} activeOpacity={0.8}>
           <MaterialIcons name="my-location" size={20} color="#006c49" />

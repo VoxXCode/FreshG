@@ -1,14 +1,3 @@
-/**
- * FreshG / PresidentKu – Location-Based Services (LBS) Screen
- * Materi: Mobile Programming - Week 10: Sprint 08
- *
- * Mengimplementasikan seluruh kebutuhan Sprint 08:
- * - Task 01: Implement GPS Location & Permission (expo-location)
- * - Task 02: Display Location on Map (Maps SDK & Markers)
- * - Task 03: Location Intelligence (Reverse Geocoding & Geofencing)
- * - Battery Optimization: Interval, Accuracy Configuration, & Listener Cleanup
- * - Demo Checklist Tracker (7 Poin Evaluasi Sprint)
- */
 import { useState, useMemo } from 'react';
 import {
   View,
@@ -30,7 +19,6 @@ import { useLocationService } from '@/hooks/use-location-service';
 import LocationMap from '@/components/location-map';
 import { BottomTabInset } from '@/constants/theme';
 
-// ─── Design Tokens ─────────────────────────────────────────────────────────────
 const C = {
   primary:            '#006c49',
   primaryContainer:   '#10b981',
@@ -73,7 +61,6 @@ export default function LokasiScreen() {
     distanceInterval,
     isSimulated,
 
-    // Actions
     requestLocationPermission,
     fetchCurrentLocation,
     doReverseGeocode,
@@ -86,10 +73,8 @@ export default function LokasiScreen() {
     dismissBanner,
   } = useLocationService();
 
-  // State untuk Checklist Evaluasi Demo (Slide 16)
   const [batteryExplained, setBatteryExplained] = useState(false);
 
-  // Status evaluasi otomatis berdasarkan interaksi
   const demoChecklist = useMemo(() => {
     const hasGps = permissionStatus === Location.PermissionStatus.GRANTED;
     const hasCoords = location !== null;
@@ -126,7 +111,6 @@ export default function LokasiScreen() {
     <SafeAreaView edges={['top']} style={s.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
 
-      {/* ── Top App Bar ── */}
       <View style={s.appBar}>
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
           <MaterialIcons name="arrow-back" size={24} color={C.onSurface} />
@@ -153,7 +137,6 @@ export default function LokasiScreen() {
         contentContainerStyle={[s.scrollContent, { paddingBottom: BottomTabInset + 40 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Geofence Notification / Feedback Banner (Slide 10 & 14) ── */}
         {geofenceBannerMessage && (
           <View
             style={[
@@ -185,7 +168,6 @@ export default function LokasiScreen() {
           </View>
         )}
 
-        {/* ── Error Banner jika ada ── */}
         {errorMsg && (
           <View style={s.errorBanner}>
             <MaterialIcons name="error-outline" size={20} color={C.error} />
@@ -193,7 +175,6 @@ export default function LokasiScreen() {
           </View>
         )}
 
-        {/* ── Banner Simulasi Aktif ── */}
         {isSimulated && (
           <View style={s.simulatedBanner}>
             <MaterialIcons name="science" size={18} color="#7c3aed" />
@@ -210,9 +191,6 @@ export default function LokasiScreen() {
           </View>
         )}
 
-        {/* ══════════════════════════════════════════════════════════════════════
-            TASK 01: IMPLEMENT GPS LOCATION (Slide 11 & 12)
-        ══════════════════════════════════════════════════════════════════════ */}
         <View style={s.taskCard}>
           <View style={s.taskHeaderRow}>
             <View style={s.taskBadge}>
@@ -224,7 +202,6 @@ export default function LokasiScreen() {
             Mengakses hardware GPS menggunakan modul `expo-location`, meminta perizinan lokasi, dan membaca metrik koordinat numerik.
           </Text>
 
-          {/* Permission Status Box */}
           <View style={s.permissionBox}>
             <View style={s.permLeft}>
               <MaterialIcons
@@ -262,7 +239,6 @@ export default function LokasiScreen() {
             )}
           </View>
 
-          {/* Coordinates Display Card (Sesuai Slide 12) */}
           <View style={s.coordsDisplayCard}>
             <View style={s.coordsHeaderRow}>
               <View style={s.coordsIconWrap}>
@@ -304,7 +280,6 @@ export default function LokasiScreen() {
             </View>
           </View>
 
-          {/* Action Button: Ambil Lokasi (Slide 12) */}
           <TouchableOpacity
             style={s.btnPrimary}
             onPress={fetchCurrentLocation}
@@ -322,9 +297,6 @@ export default function LokasiScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ══════════════════════════════════════════════════════════════════════
-            TASK 02: DISPLAY LOCATION ON MAP (Slide 8 & 13)
-        ══════════════════════════════════════════════════════════════════════ */}
         <View style={s.taskCard}>
           <View style={s.taskHeaderRow}>
             <View style={s.taskBadge}>
@@ -336,7 +308,6 @@ export default function LokasiScreen() {
             Menampilkan wadah peta interaktif (Maps SDK), memusatkan kamera pada posisi GPS, dan menampilkan marker posisi terkini.
           </Text>
 
-          {/* Interactive Map Component */}
           <LocationMap
             userLocation={location}
             geofence={activeGeofence}
@@ -344,7 +315,6 @@ export default function LokasiScreen() {
             height={290}
           />
 
-          {/* Legend / Info Peta */}
           <View style={s.mapLegendRow}>
             <View style={s.legendItem}>
               <View style={[s.legendDot, { backgroundColor: '#0284c7' }]} />
@@ -366,9 +336,6 @@ export default function LokasiScreen() {
           </View>
         </View>
 
-        {/* ══════════════════════════════════════════════════════════════════════
-            TASK 03: LOCATION INTELLIGENCE (Slide 9, 10 & 14)
-        ══════════════════════════════════════════════════════════════════════ */}
         <View style={s.taskCard}>
           <View style={s.taskHeaderRow}>
             <View style={s.taskBadge}>
@@ -380,7 +347,6 @@ export default function LokasiScreen() {
             A. Reverse Geocoding (mengubah koordinat GPS menjadi alamat terbaca) dan B. Geofencing (batas virtual deteksi masuk/keluar area).
           </Text>
 
-          {/* ── Subtask A: Reverse Geocoding Card (Slide 14.A) ── */}
           <View style={s.intelligenceSubcard}>
             <View style={s.subcardHeader}>
               <View style={s.subcardIconWrap}>
@@ -420,7 +386,6 @@ export default function LokasiScreen() {
             )}
           </View>
 
-          {/* ── Subtask B: Geofencing Card (Slide 14.B) ── */}
           <View style={s.intelligenceSubcard}>
             <View style={s.subcardHeader}>
               <View style={[s.subcardIconWrap, { backgroundColor: '#fef3c7' }]}>
@@ -432,7 +397,6 @@ export default function LokasiScreen() {
               Membuat batas virtual radius 500 meter di sekitar target dan mendeteksi transisi posisi pengguna.
             </Text>
 
-            {/* Geofence Status Box */}
             <View
               style={[
                 s.geofenceStatusBox,
@@ -478,7 +442,6 @@ export default function LokasiScreen() {
               </View>
             </View>
 
-            {/* Simulasi Pengujian Geofence (Mempermudah Praktikum/Demo) */}
             <View style={s.simulationSection}>
               <Text style={s.simTitle}>Uji Skenario Geofence (Demo Event):</Text>
               <View style={s.simButtonsRow}>
@@ -513,9 +476,6 @@ export default function LokasiScreen() {
           </View>
         </View>
 
-        {/* ══════════════════════════════════════════════════════════════════════
-            BATTERY OPTIMIZATION: TRACK LOCATION EFFICIENTLY (Slide 15)
-        ══════════════════════════════════════════════════════════════════════ */}
         <View style={s.taskCard}>
           <View style={s.taskHeaderRow}>
             <View style={[s.taskBadge, { backgroundColor: '#fef08a' }]}>
@@ -527,7 +487,6 @@ export default function LokasiScreen() {
             Menyeimbangkan antara akurasi, kebutuhan fitur aplikasi, dan konsumsi baterai dengan memfilter frekuensi update dan membersihkan subscription.
           </Text>
 
-          {/* Toggle Continuous Tracking */}
           <View style={s.trackingToggleRow}>
             <View style={{ flex: 1 }}>
               <Text style={s.trackingToggleTitle}>Pelacakan Berkelanjutan (Watch)</Text>
@@ -548,7 +507,6 @@ export default function LokasiScreen() {
             />
           </View>
 
-          {/* Konfigurasi Akurasi */}
           <View style={s.optConfigSection}>
             <Text style={s.optConfigLabel}>1. Accuracy Configuration</Text>
             <View style={s.optPillsRow}>
@@ -579,7 +537,6 @@ export default function LokasiScreen() {
             </View>
           </View>
 
-          {/* Konfigurasi Interval & Jarak */}
           <View style={s.optConfigSection}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={s.optConfigLabel}>2. Update Interval & Distance Filter</Text>
@@ -618,7 +575,6 @@ export default function LokasiScreen() {
             </View>
           </View>
 
-          {/* Perbandingan Edukatif (Slide 15) */}
           <View style={s.comparisonCard}>
             <Text style={s.compCardTitle}>Perbandingan Efisiensi Daya</Text>
             <View style={s.compRow}>
@@ -647,9 +603,6 @@ export default function LokasiScreen() {
           </View>
         </View>
 
-        {/* ══════════════════════════════════════════════════════════════════════
-            DEMO CHECKLIST TRACKER (Slide 16: Sprint 08 Completion)
-        ══════════════════════════════════════════════════════════════════════ */}
         <View style={s.taskCard}>
           <View style={s.taskHeaderRow}>
             <View style={[s.taskBadge, { backgroundColor: '#bbf7d0' }]}>
@@ -710,7 +663,6 @@ export default function LokasiScreen() {
   );
 }
 
-// ─── Stylesheet ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   safeArea: {
     flex: 1,

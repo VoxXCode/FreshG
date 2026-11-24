@@ -1,8 +1,3 @@
-/**
- * Offline Banner – FreshG (Sprint 05: Offline Handling)
- *
- * Menampilkan bar peringatan warna ungu hanya saat koneksi terputus (Slide 11 & 12).
- */
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';

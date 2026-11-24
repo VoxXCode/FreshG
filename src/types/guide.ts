@@ -1,6 +1,3 @@
-/**
- * Application Data – Panduan Penyimpanan
- */
 export type GuideTheme = 'blue' | 'amber';
 
 export interface Guide {

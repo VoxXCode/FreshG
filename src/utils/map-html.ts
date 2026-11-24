@@ -1,9 +1,3 @@
-/**
- * FreshG / PresidentKu – Leaflet Map HTML Template Generator
- * Menghasilkan markup peta interaktif berbasis OpenStreetMap & Leaflet.js
- * dengan Marker Pengguna, Radius Geofence, Marker Kampus, dan Kontrol Kamera.
- */
-
 export interface MapHtmlProps {
   userLocation: { latitude: number; longitude: number; accuracy?: number | null } | null;
   geofence: { latitude: number; longitude: number; radius: number; name: string };

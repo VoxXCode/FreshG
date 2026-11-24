@@ -1,12 +1,3 @@
-/**
- * Async Data Hook – FreshG (Sprint 05: Loading, Error & Retry Mechanism)
- *
- * Mengelola siklus hidup request API:
- * - Loading state & Retrying indicator (Task 02)
- * - Success state (data tersimpan)
- * - Error state (menangkap 4xx, 5xx, timeout, dan offline)
- * - Retry function (refetch) untuk mencoba request kembali
- */
 import { useEffect, useState, useCallback } from 'react';
 import type { ApiError } from '@/types/api-error';
 
