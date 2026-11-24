@@ -24,7 +24,9 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "VIBRATE"
       ]
     },
     "web": {
@@ -46,6 +48,13 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "FreshG membutuhkan akses lokasi untuk menampilkan posisi Anda di peta dan mendeteksi area kampus serta rekomendasi terdekat."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#006c49"
         }
       ]
     ],

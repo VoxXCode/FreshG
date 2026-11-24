@@ -487,6 +487,34 @@ export default function PengaturanScreen() {
           </View>
         </View>
 
+        {/* Group: Push Notification (Week 11 - Sprint 09) */}
+        <View style={s.group}>
+          <Text style={s.groupTitle}>PUSH NOTIFICATION (WEEK 11)</Text>
+          <View style={s.cardList}>
+            <TouchableOpacity
+              style={s.linkItem}
+              onPress={() => router.push('/notifikasi')}
+              activeOpacity={0.7}
+            >
+              <View style={s.linkLeft}>
+                <View style={[s.iconWrap, { backgroundColor: '#f3e8ff' }]}>
+                  <MaterialCommunityIcons name="bell-ring" size={20} color="#9333ea" />
+                </View>
+                <View style={s.linkText}>
+                  <Text style={s.itemTitle}>Push Notification & Deep Linking (Sprint 09)</Text>
+                  <Text style={s.itemDesc} numberOfLines={1}>Expo Push Token, Pengingat Kedaluwarsa, Payload & Navigasi</Text>
+                </View>
+              </View>
+              <View style={s.linkRightRow}>
+                <View style={[s.linkBadge, { backgroundColor: '#f3e8ff' }]}>
+                  <Text style={[s.linkBadgeTxt, { color: '#9333ea' }]}>Sprint 09</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={18} color={C.outline} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Group: Simulasi (Sprint 05) */}
         <View style={s.group}>
           <Text style={s.groupTitle}>SIMULASI</Text>

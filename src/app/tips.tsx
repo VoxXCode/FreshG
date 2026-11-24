@@ -47,7 +47,7 @@ const C = {
   surfaceContainerHigh:'#dce9ff',
   surfaceContainerHighest:'#d3e4fe',
   surfaceLowest:      '#ffffff',
-  onSurface:          '#0b1c30',
+  onSurface:          '#0b1c30',  
   onSurfaceVariant:   '#3c4a42',
   outlineVariant:     '#bbcabf',
   outline:            '#6c7a71',

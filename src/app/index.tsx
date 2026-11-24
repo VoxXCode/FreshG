@@ -542,8 +542,13 @@ export default function HomeScreen() {
               <MaterialIcons name="photo-camera" size={22} color={C.primary} />
             </TouchableOpacity>
 
-            {/* Notification Bell */}
-            <TouchableOpacity style={s.bellBtn} activeOpacity={0.8}>
+            {/* Notification Bell (Week 11: Sprint 09) */}
+            <TouchableOpacity
+              style={s.bellBtn}
+              onPress={() => router.push('/notifikasi')}
+              activeOpacity={0.8}
+              accessibilityLabel="Pusat Notifikasi"
+            >
               <MaterialIcons name="notifications" size={24} color={C.onSurface} />
               {urgentCount > 0 && (
                 <View style={s.bellBadge}>
@@ -606,6 +611,29 @@ export default function HomeScreen() {
             </View>
             <View style={[s.todoBannerArrow, { backgroundColor: '#e0f2fe' }]}>
               <MaterialIcons name="arrow-forward-ios" size={14} color="#0284c7" />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── SECTION 2C: Shortcut Push Notification (Week 11: Sprint 09) ── */}
+        <View style={s.section}>
+          <TouchableOpacity
+            style={[s.todoBanner, { borderColor: '#c084fc', backgroundColor: '#faf5ff' }]}
+            onPress={() => router.push('/notifikasi')}
+            activeOpacity={0.85}
+          >
+            <View style={s.todoBannerLeft}>
+              <View style={[s.todoBadge, { backgroundColor: '#f3e8ff' }]}>
+                <MaterialCommunityIcons name="bell-ring" size={14} color="#9333ea" />
+                <Text style={[s.todoBadgeText, { color: '#9333ea' }]}>Week 11 • Sprint 09</Text>
+              </View>
+              <Text style={s.todoBannerTitle}>Push Notification & Deep Linking</Text>
+              <Text style={s.todoBannerSubtitle}>
+                Push Token, Pengingat Kedaluwarsa, Notifikasi Resep & Navigasi Cepat
+              </Text>
+            </View>
+            <View style={[s.todoBannerArrow, { backgroundColor: '#f3e8ff' }]}>
+              <MaterialIcons name="arrow-forward-ios" size={14} color="#9333ea" />
             </View>
           </TouchableOpacity>
         </View>
