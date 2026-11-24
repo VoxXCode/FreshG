@@ -1,13 +1,44 @@
+import { useEffect } from 'react';
+import { useColorScheme, LogBox } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider, Tabs, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import BottomTabBar from '@/components/bottom-tab-bar';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 
+// Nonaktifkan pop-up overlay peringatan/error LogBox agar tidak menutupi layar pengujian HP
+LogBox.ignoreAllLogs(true);
+
 SplashScreen.preventAutoHideAsync();
+
+/**
+ * GlobalNotificationHandler – Menangani Deep Linking saat notifikasi ditekan (Week 11 Slide 10 & 14)
+ */
+function GlobalNotificationHandler() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response?.notification?.request?.content?.data as { screen?: string } | undefined;
+      if (data?.screen) {
+        console.log('[RootLayout] Deep linking via notification tap ke:', data.screen);
+        try {
+          router.push(data.screen as any);
+        } catch (err) {
+          console.log('[RootLayout] Gagal navigasi deep link:', err);
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
+
+  return null;
+}
 
 /**
  * AuthNavigationGuard – Mengatur proteksi rute (Week 5: Sprint 04 - Task 03)
@@ -43,6 +74,7 @@ function MainNavigation() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
       <AuthNavigationGuard />
+      <GlobalNotificationHandler />
       <Tabs
         screenOptions={{ headerShown: false }}
         tabBar={(props) => <BottomTabBar {...props} />}
@@ -55,6 +87,7 @@ function MainNavigation() {
         <Tabs.Screen name="pengaturan"  options={{ title: 'Pengaturan' }} />
 
         {/* Hidden – not shown in tab bar */}
+        <Tabs.Screen name="notifikasi"  options={{ href: null }} />
         <Tabs.Screen name="lokasi"      options={{ href: null }} />
         <Tabs.Screen name="sensor"      options={{ href: null }} />
         <Tabs.Screen name="scan"        options={{ href: null }} />
